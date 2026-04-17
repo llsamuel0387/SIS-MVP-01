@@ -10,7 +10,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: path.resolve(__dirname),
   async headers() {
-    const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'";
+    // Next App Router serves inline flight/hydration chunks; without `'unsafe-inline'` (or nonces),
+    // production `next start` + Playwright see an empty shell after blocked scripts.
+    const scriptSrc = isDev
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'";
 
     const baseSecurityHeaders = [
       { key: "X-Frame-Options", value: "DENY" },

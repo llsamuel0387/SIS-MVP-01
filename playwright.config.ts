@@ -17,13 +17,14 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `npx next dev -p ${port} -H ${host}`,
+    // Production build + start avoids a separate `.next-e2e` dist dir. Uses the default `.next`.
+    // Do not run alongside `npm run dev` locally: `next build` overwrites `.next` while the dev server is running.
+    command: `npm run build && npx next start -p ${port} -H ${host}`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
+    // Avoid reusing an unrelated process already bound to :3100 (tests then see the wrong app).
+    reuseExistingServer: process.env.PW_REUSE_SERVER === "1",
+    timeout: 300_000,
     stdout: "pipe",
-    stderr: "pipe",
-    // Isolate from `npm run dev` (port 3000), which uses the default `.next` output dir.
-    env: { ...process.env, NEXT_DIST_DIR: ".next-e2e" }
+    stderr: "pipe"
   }
 });

@@ -42,7 +42,7 @@ Next.js(App Router) + Prisma(SQLite) + 서버 측 권한 검증을 기준으로 
 | --- | --- |
 | `npm run dev` | Next 기본 출력 디렉터리 **`.next`** 를 사용합니다. (과거에 쓰이던 **`.next-dev`** 는 더 이상 `npm run dev`에서 쓰이지 않습니다.) |
 | 단일 인스턴스 PID | **`.sis-dev/.dev-server.pid`** — `.next` 삭제와 분리되어 있습니다. |
-| `npm run test:e2e` | Playwright가 **`.next-e2e`** 로 별도 `next dev`(포트 **3100**)를 띄워, 로컬 `npm run dev`(3000)와 **`.next`를 두고 싸우지 않게** 합니다. |
+| `npm run test:e2e` | Playwright가 **`npm run build`** 뒤 **`next start`**(`127.0.0.1:3100`)로 앱을 띄웁니다. 산출물은 기본 **`.next`** 입니다. **`npm run dev`와 동시에** 돌리지 마세요. `next build`가 켜져 있는 dev의 **`.next`** 를 덮어쓸 수 있습니다. |
 | 파일 폴링 (Docker 볼륨 등) | 기본은 끔. 필요 시 **`SIS_DEV_FILE_POLLING=1 npm run dev`** |
 
 ---
@@ -166,7 +166,7 @@ npm run dev
 | `Port 3000 is already in use` | 다른 프로세스가 3000번 포트를 사용 중입니다. 해당 프로세스를 종료 후 다시 `npm run dev` |
 | `db:wipe-dev` 후 500 오류 | 개발 서버를 **완전히 종료**한 뒤 다시 `npm run dev` |
 | 화면이 맨 위 HTML만 보이거나 버튼·레이아웃이 깨짐 | ① 주소는 **`http://127.0.0.1:3000`** (스크립트가 이 호스트에 묶입니다). ② DevTools → Network에서 **`/_next/static/`** CSS·JS가 **404**인지 확인. ③ **`npm run dev:clean`** 으로 `.next` 등을 지운 뒤 dev 재시작. ④ 브라우저 **강력 새로고침**(Cmd+Shift+R) |
-| E2E 테스트 실패 / `Executable doesn't exist` … `playwright` | `npm install`만 하면 브라우저 바이너리는 내려받지 않습니다. **`npm run playwright:install`** (또는 `npx playwright install chromium`) 후 다시 `npm run test:e2e` 또는 `npm run test:all`. ([`playwright.config.ts`](./playwright.config.ts): **`127.0.0.1:3100`**, 산출물 **`.next-e2e`**) |
+| E2E 테스트 실패 / `Executable doesn't exist` … `playwright` | `npm install`만 하면 브라우저 바이너리는 내려받지 않습니다. **`npm run playwright:install`** (또는 `npx playwright install chromium`) 후 다시 `npm run test:e2e` 또는 `npm run test:all`. ([`playwright.config.ts`](./playwright.config.ts): **`127.0.0.1:3100`**, **`build` + `next start`**, 산출물 **`.next`**) |
 | `.env` 에 키가 없어서 오류 | 3단계로 돌아가 모든 필수 변수를 채워주세요 |
 
 ---
@@ -203,7 +203,7 @@ npm run dev
 | `npm run test:integration` | 통합 테스트만 단독 실행 |
 | `npm run test:watch` | Vitest 워치 모드 |
 | `npm run playwright:install` | Playwright **Chromium** 브라우저 다운로드 (`test:e2e` / `test:all` 전에 최초 1회 권장) |
-| `npm run test:e2e` | Playwright E2E (`127.0.0.1:3100`, 산출물 **`.next-e2e`**, [`playwright.config.ts`](./playwright.config.ts)) |
+| `npm run test:e2e` | Playwright E2E (`127.0.0.1:3100`, `build` + `next start`, 산출물 **`.next`**, [`playwright.config.ts`](./playwright.config.ts)). 매번 `webServer`를 새로 띄웁니다. 이미 올바른 앱이 **3100**에서 돌고 있을 때만 `PW_REUSE_SERVER=1` 로 재사용을 켤 수 있습니다. |
 | `npm run test:all` | `npm run test` + `npm run test:e2e` |
 | `npm run check:mutation-audit` | 변이 API 감사 로그 누락 검사 |
 
@@ -247,7 +247,7 @@ npm run check:mutation-audit   # 감사 로그 누락 여부
   1. Vitest 기본 설정: `authz`, CSRF, 스키마 검증 등 (DB 불필요)
   2. `vitest.integration.config.ts`: `prisma/test-integration.db` 에 스키마 반영 후 시드 + 픽스처 데이터로 실제 DB 테스트
 - **`npm run test:integration`** — 위 2번만 단독 실행 (통합만 디버깅할 때).
-- **`npm run test:e2e`** — Playwright. [`playwright.config.ts`](./playwright.config.ts)가 **`npx next dev -p 3100 -H 127.0.0.1`** 로 서버를 띄우며, 환경변수 **`NEXT_DIST_DIR=.next-e2e`** 로 로컬 `npm run dev`의 **`.next`** 와 충돌하지 않습니다. **로컬에서 E2E를 처음 돌리기 전** `npm run playwright:install` (또는 `npx playwright install chromium`) — `npm install`만으로는 브라우저가 설치되지 않습니다. CI는 `chromium --with-deps`.
+- **`npm run test:e2e`** — Playwright. [`playwright.config.ts`](./playwright.config.ts)가 **`npm run build && npx next start -p 3100 -H 127.0.0.1`** 로 서버를 띄우며, 기본 산출물 **`.next`** 를 씁니다. 로컬에서 **`npm run dev`를 켠 채** E2E를 돌리면 `next build`가 **`.next`** 를 갱신해 dev가 깨질 수 있으므로 **E2E 전에는 dev를 끄는 것**을 권장합니다. **로컬에서 E2E를 처음 돌리기 전** `npm run playwright:install` (또는 `npx playwright install chromium`) — `npm install`만으로는 브라우저가 설치되지 않습니다. CI는 `chromium --with-deps`.
 
 ---
 
