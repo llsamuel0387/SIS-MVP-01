@@ -65,7 +65,7 @@ async function main() {
   }
 
   const adminPasswordHash = await hashPassword("AdminDemo#1");
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { loginId: "admin" },
     update: {
       passwordHash: adminPasswordHash,
@@ -79,6 +79,30 @@ async function main() {
       roleId: roleAdmin.id,
       status: "ACTIVE",
       mustChangePassword: false
+    }
+  });
+  await prisma.userProfile.upsert({
+    where: { userId: adminUser.id },
+    update: {
+      firstNameKo: "관리",
+      lastNameKo: "자",
+      firstNameEn: "Admin",
+      lastNameEn: "User",
+      email: "admin-seed@demo.invalid",
+      termCountry: "KR",
+      termAddressLine1: "Demo Campus Admin Office",
+      termPostCode: "00001"
+    },
+    create: {
+      userId: adminUser.id,
+      firstNameKo: "관리",
+      lastNameKo: "자",
+      firstNameEn: "Admin",
+      lastNameEn: "User",
+      email: "admin-seed@demo.invalid",
+      termCountry: "KR",
+      termAddressLine1: "Demo Campus Admin Office",
+      termPostCode: "00001"
     }
   });
 
@@ -102,11 +126,52 @@ async function main() {
   });
   await prisma.student.upsert({
     where: { userId: demoStudentUser.id },
-    update: { studentNo: "SEED-DEMO-S-001", enrollmentStatus: "ENROLLED" },
+    update: {
+      studentNo: "SEED-DEMO-S-001",
+      enrollmentStatus: "ENROLLED",
+      campus: "International",
+      gradeLevel: "10",
+      homeroom: "10-A"
+    },
     create: {
       userId: demoStudentUser.id,
       studentNo: "SEED-DEMO-S-001",
-      enrollmentStatus: "ENROLLED"
+      enrollmentStatus: "ENROLLED",
+      campus: "International",
+      gradeLevel: "10",
+      homeroom: "10-A"
+    }
+  });
+  await prisma.userProfile.upsert({
+    where: { userId: demoStudentUser.id },
+    update: {
+      firstNameKo: "데모",
+      lastNameKo: "학생",
+      firstNameEn: "Demo",
+      lastNameEn: "Student",
+      email: "studentdemo-seed@demo.invalid",
+      nationality: "KR",
+      termCountry: "KR",
+      termAddressLine1: "123 Dormitory Lane",
+      termPostCode: "00002",
+      homeCountry: "KR",
+      homeAddressLine1: "456 Home Street",
+      homePostCode: "00003"
+    },
+    create: {
+      userId: demoStudentUser.id,
+      firstNameKo: "데모",
+      lastNameKo: "학생",
+      firstNameEn: "Demo",
+      lastNameEn: "Student",
+      email: "studentdemo-seed@demo.invalid",
+      nationality: "KR",
+      termCountry: "KR",
+      termAddressLine1: "123 Dormitory Lane",
+      termPostCode: "00002",
+      homeCountry: "KR",
+      homeAddressLine1: "456 Home Street",
+      homePostCode: "00003"
     }
   });
 
@@ -140,6 +205,30 @@ async function main() {
       employeeNo: "SEED-DEMO-T-001",
       staffTier: "STAFF",
       employmentStatus: "ACTIVE"
+    }
+  });
+  await prisma.userProfile.upsert({
+    where: { userId: demoStaffUser.id },
+    update: {
+      firstNameKo: "데모",
+      lastNameKo: "교직원",
+      firstNameEn: "Demo",
+      lastNameEn: "Staff",
+      email: "staffdemo-seed@demo.invalid",
+      termCountry: "KR",
+      termAddressLine1: "Faculty Building 2F",
+      termPostCode: "00004"
+    },
+    create: {
+      userId: demoStaffUser.id,
+      firstNameKo: "데모",
+      lastNameKo: "교직원",
+      firstNameEn: "Demo",
+      lastNameEn: "Staff",
+      email: "staffdemo-seed@demo.invalid",
+      termCountry: "KR",
+      termAddressLine1: "Faculty Building 2F",
+      termPostCode: "00004"
     }
   });
 

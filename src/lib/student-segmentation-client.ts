@@ -1,10 +1,10 @@
 import { secureClientFetch } from "@/lib/browser-security";
+import { parseFetchResponseJson } from "@/lib/parse-fetch-response-json";
 import type { StudentSegmentationConfig } from "@/lib/student-segmentation";
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; data: T }> {
   const response = await secureClientFetch(url, init);
-  const data = (await response.json()) as T;
-  return { ok: response.ok, data };
+  return parseFetchResponseJson<T>(response);
 }
 
 export async function getSegmentationConfig(): Promise<{ ok: boolean; data: StudentSegmentationConfig }> {

@@ -94,6 +94,11 @@ Must contain:
 * Extract repeated Prisma queries
 * Avoid N+1 queries
 * Prefer DB filtering over in-memory filtering
+* **Exception**: encrypted fields (e.g. name, email stored via AES-256-GCM)
+  cannot be filtered at the DB level.
+  In these cases, in-memory filtering after decryption is acceptable.
+  Long-term solution: maintain a separate plaintext search index column
+  (e.g. `accountSearchText`) — planned for PostgreSQL migration.
 
 ---
 
@@ -217,7 +222,7 @@ Do not mix arbitrarily.
 | src/lib/password.ts        | Password hashing   |
 | src/lib/person-data.ts     | Encryption         |
 | prisma/schema.prisma       | DB schema          |
-| middleware.ts            | Route protection   |
+| middleware.ts              | Route protection   |
 | src/lib/api-csrf-policy.ts | CSRF protection    |
 
 When modifying:
@@ -332,4 +337,4 @@ This project is still evolving.
 
 * Apply checks only to changed parts
 * Do not block feature delivery for unrelated violations
-* Do not introduce new violations
+* Do not introduce new violations 

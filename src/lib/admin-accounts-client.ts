@@ -1,4 +1,5 @@
 import { secureClientFetch } from "@/lib/browser-security";
+import { parseFetchResponseJson } from "@/lib/parse-fetch-response-json";
 import type { StaffTierCode } from "@/lib/permissions";
 
 export type AccountRoleFilter = "ALL" | "STUDENT" | "STAFF" | "ADMIN";
@@ -29,8 +30,7 @@ export type CreateAdminAccountPayload = {
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; data: T }> {
   const response = await secureClientFetch(url, init);
-  const data = (await response.json()) as T;
-  return { ok: response.ok, data };
+  return parseFetchResponseJson<T>(response);
 }
 
 function buildAccountQuery(roleFilter: AccountRoleFilter, query?: string, suggest?: boolean): string {

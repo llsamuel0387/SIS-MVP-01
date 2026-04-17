@@ -1,5 +1,7 @@
 .next
 .next-dev
+.next-e2e
+.sis-dev
 node_modules
 .DS_Store
 .env

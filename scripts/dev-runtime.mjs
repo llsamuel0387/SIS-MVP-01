@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -23,9 +23,27 @@ const major = Number.parseInt(process.versions.node.split(".")[0] ?? "", 10);
 const supportedMajors = new Set([18, 20, 22]);
 const HOST = "127.0.0.1";
 const PORT = 3000;
-const DEV_DIST_DIR = ".next-dev";
-const PID_DIR = resolve(DEV_DIST_DIR);
-const PID_FILE = resolve(`${DEV_DIST_DIR}/.dev-server.pid`);
+/** Keep PID outside `.next` so wipes / Next itself never strand a half-deleted dist with a live pid. */
+const PID_DIR = resolve(process.cwd(), ".sis-dev");
+const PID_FILE = resolve(PID_DIR, ".dev-server.pid");
+const NEXT_DIST = ".next";
+
+/**
+ * After a crash, partial wipe, or an interrupted compile, `.next` can contain manifests but no
+ * `static/` → HTML references `/_next/static/...` that always 404 (unstyled UI, no hydration).
+ * Custom `NEXT_DIST_DIR` was especially prone to this; `npm run dev` now uses the default `.next`.
+ */
+function removeIncompleteNextDist() {
+  const distRoot = resolve(process.cwd(), NEXT_DIST);
+  const manifestPath = resolve(distRoot, "app-build-manifest.json");
+  const staticDir = resolve(distRoot, "static");
+  if (existsSync(manifestPath) && !existsSync(staticDir)) {
+    console.warn(
+      "[sis-mvp] `.next` is incomplete (manifest present but no static/). Removing it so Next can rebuild dev assets."
+    );
+    rmSync(distRoot, { recursive: true, force: true });
+  }
+}
 
 function ensureRuntimeDir() {
   mkdirSync(PID_DIR, { recursive: true });
@@ -68,22 +86,20 @@ async function ensurePortFree() {
   });
 }
 
-function cleanupBuildArtifacts() {
-  rmSync(resolve(`${DEV_DIST_DIR}/server`), { recursive: true, force: true });
-  rmSync(resolve(`${DEV_DIST_DIR}/static`), { recursive: true, force: true });
-  rmSync(resolve(`${DEV_DIST_DIR}/cache`), { recursive: true, force: true });
-}
-
 function startDev(command, args) {
+  const env = { ...process.env };
+  delete env.NEXT_DIST_DIR;
+  delete env.WATCHPACK_POLLING;
+  delete env.CHOKIDAR_USEPOLLING;
+  if (process.env.SIS_DEV_FILE_POLLING === "1") {
+    env.WATCHPACK_POLLING = "true";
+    env.CHOKIDAR_USEPOLLING = "1";
+  }
+
   const child = spawn(command, args, {
     stdio: "inherit",
     shell: false,
-    env: {
-      ...process.env,
-      NEXT_DIST_DIR: DEV_DIST_DIR,
-      WATCHPACK_POLLING: "true",
-      CHOKIDAR_USEPOLLING: "1"
-    }
+    env
   });
 
   writeFileSync(PID_FILE, String(child.pid ?? ""));
@@ -103,10 +119,12 @@ function startDev(command, args) {
 
 async function main() {
   ensureDevDatabaseUrlForWorkspace();
+  removeIncompleteNextDist();
   ensureRuntimeDir();
   ensureSingleInstance();
   await ensurePortFree();
-  cleanupBuildArtifacts();
+  // Do not delete `.next/server`, `static`, or `cache` while Next is running. Use `npm run dev:clean`
+  // for a cold cache. For Docker bind mounts, set `SIS_DEV_FILE_POLLING=1` to re-enable polling.
 
   if (supportedMajors.has(major)) {
     startDev("node", ["./node_modules/next/dist/bin/next", "dev", "--hostname", HOST, "--port", String(PORT)]);

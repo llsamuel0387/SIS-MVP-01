@@ -1,13 +1,13 @@
 import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { prismaDevDatabaseUrl, prismaDevDbFile, repoRoot } from "./prisma-dev-database-url.mjs";
 
-const root = resolve(import.meta.dirname, "..");
+const root = repoRoot;
 const prismaDir = resolve(root, "prisma");
-const devDbFile = resolve(prismaDir, "dev.db");
-/** Canonical dev DB URL (always prisma/dev.db). */
-const databaseUrl = pathToFileURL(devDbFile).href;
+const devDbFile = prismaDevDbFile;
+const databaseUrl = prismaDevDatabaseUrl;
 
 function rmQuiet(path) {
   try {
@@ -77,6 +77,23 @@ function removeTmpSisSeedSqlites() {
   }
 }
 
+/** Avoid deleting `.next` while `npm run dev` is still running (Next then 500s on missing manifests). */
+function assertDevPortFreeBeforeWipe() {
+  const r = spawnSync("lsof", ["-nP", "-iTCP:3000", "-sTCP:LISTEN"], { encoding: "utf8" });
+  if (r.error) {
+    return;
+  }
+  if (r.stdout?.trim()) {
+    console.error(
+      "[sis-mvp] Port 3000 is in use (e.g. `npm run dev`). Stop the dev server, then run db:wipe-dev again.\n" +
+        "[sis-mvp] Wiping `.next` while Next is running causes ENOENT / Internal Server Error until you restart dev."
+    );
+    process.exit(1);
+  }
+}
+
+assertDevPortFreeBeforeWipe();
+
 removeEnvDatabaseUrlTargets();
 removeTmpSisSeedSqlites();
 
@@ -99,7 +116,7 @@ try {
 rmQuiet(resolve(prismaDir, "prisma", "ci-verify.sqlite"));
 rmQuiet(resolve(prismaDir, "prisma"));
 
-for (const dir of [".next", ".next-dev"]) {
+for (const dir of [".next", ".next-dev", ".next-e2e", ".sis-dev"]) {
   rmQuiet(resolve(root, dir));
 }
 
@@ -121,5 +138,5 @@ console.log(`[sis-mvp] Wiped and re-seeded: ${devDbFile}`);
 console.log("[sis-mvp] Use DATABASE_URL=file:./dev.db in .env (Prisma resolves to prisma/dev.db).");
 console.log("[sis-mvp] Login: admin / AdminDemo#1");
 console.log(
-  "[sis-mvp] Next.js build output was removed (.next / .next-dev). Stop any dev server on port 3000, then run: npm run dev"
+  "[sis-mvp] Next.js build output was removed (.next / legacy .next-dev / .next-e2e / .sis-dev). Stop any dev server on port 3000, then run: npm run dev"
 );

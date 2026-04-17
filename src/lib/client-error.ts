@@ -17,6 +17,8 @@ type ApiErrorShape = {
 };
 
 const ERROR_CODE_OVERRIDES: Partial<Record<ErrorCode, string>> = {
+  SERVER_MISCONFIGURED:
+    "Server encryption keys are missing or invalid. In `.env`, set PERSON_DATA_KEY_BASE64 to the output of `openssl rand -base64 32` (same for PII_INDEX_KEY_BASE64, or remove it to reuse the data key). Then restart `npm run dev`.",
   AUTH_ACCOUNT_NOT_FOUND: "Invalid login ID or password.",
   AUTH_INVALID_CREDENTIALS: "Invalid login ID or password.",
   AUTH_ACCOUNT_INACTIVE: "Invalid login ID or password.",

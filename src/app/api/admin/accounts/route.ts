@@ -34,7 +34,14 @@ export async function POST(request: Request) {
     return response;
   }
 
-  const parsed = userCreateWithProfileSchema.safeParse(await request.json());
+  let jsonBody: unknown;
+  try {
+    jsonBody = await request.json();
+  } catch {
+    return errorResponse(ERROR_CODES.AUTH_INVALID_PAYLOAD);
+  }
+
+  const parsed = userCreateWithProfileSchema.safeParse(jsonBody);
   if (!parsed.success) {
     return errorResponse(ERROR_CODES.VALIDATION_INVALID_PAYLOAD, {
       fields: parsed.error.issues.map((issue) => ({
@@ -45,7 +52,20 @@ export async function POST(request: Request) {
   }
   const body = parsed.data;
 
-  const created = await preflightAndCreateAdminAccountWithPlainPassword(body);
+  let created;
+  try {
+    created = await preflightAndCreateAdminAccountWithPlainPassword(body);
+  } catch (err) {
+    console.error("[api/admin/accounts POST] create failed", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/PERSON_DATA_KEY_BASE64|PII_INDEX_KEY|PII index key|must decode to 32 bytes/i.test(msg)) {
+      return errorResponse(
+        ERROR_CODES.SERVER_MISCONFIGURED,
+        process.env.NODE_ENV !== "production" ? { reason: msg } : undefined
+      );
+    }
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
+  }
 
   if (!created.ok) {
     if (created.errorCode === ERROR_CODES.ACCOUNT_ALREADY_EXISTS) {

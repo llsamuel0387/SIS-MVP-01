@@ -22,6 +22,8 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     stdout: "pipe",
-    stderr: "pipe"
+    stderr: "pipe",
+    // Isolate from `npm run dev` (port 3000), which uses the default `.next` output dir.
+    env: { ...process.env, NEXT_DIST_DIR: ".next-e2e" }
   }
 });

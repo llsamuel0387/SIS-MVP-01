@@ -25,7 +25,10 @@ export const ERROR_CODES = {
   RESOURCE_USER_NOT_FOUND: "RESOURCE_USER_NOT_FOUND",
   RESOURCE_INFORMATION_CHANGE_REQUEST_NOT_FOUND: "RESOURCE_INFORMATION_CHANGE_REQUEST_NOT_FOUND",
   VALIDATION_INVALID_PAYLOAD: "VALIDATION_INVALID_PAYLOAD",
-  VALIDATION_SEGMENTATION_IN_USE: "VALIDATION_SEGMENTATION_IN_USE"
+  VALIDATION_SEGMENTATION_IN_USE: "VALIDATION_SEGMENTATION_IN_USE",
+  INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
+  /** Missing or invalid PERSON_DATA_KEY_BASE64 / PII keys in `.env`. */
+  SERVER_MISCONFIGURED: "SERVER_MISCONFIGURED"
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -58,7 +61,13 @@ const ERROR_MESSAGES: Record<ErrorCode, { status: number; message: string }> = {
   RESOURCE_USER_NOT_FOUND: { status: 404, message: "User record not found." },
   RESOURCE_INFORMATION_CHANGE_REQUEST_NOT_FOUND: { status: 404, message: "Information change request not found." },
   VALIDATION_INVALID_PAYLOAD: { status: 400, message: "Input validation failed." },
-  VALIDATION_SEGMENTATION_IN_USE: { status: 409, message: "Department/Pathway cannot be removed while assigned to students." }
+  VALIDATION_SEGMENTATION_IN_USE: { status: 409, message: "Department/Pathway cannot be removed while assigned to students." },
+  INTERNAL_SERVER_ERROR: { status: 500, message: "Something went wrong on the server. Please try again." },
+  SERVER_MISCONFIGURED: {
+    status: 503,
+    message:
+      "Server encryption keys are missing or invalid. Set PERSON_DATA_KEY_BASE64 (and optionally PII_INDEX_KEY_BASE64) to the output of: openssl rand -base64 32"
+  }
 };
 
 export function errorResponse(code: ErrorCode, details?: Record<string, unknown>) {
