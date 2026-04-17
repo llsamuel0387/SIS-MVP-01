@@ -4,6 +4,8 @@
 Next.js(App Router) + Prisma(SQLite) + 서버 측 권한 검증을 기준으로 합니다.  
 코딩·리뷰·에이전트 작업 시 저장소 규칙은 **[AGENTS.md](./AGENTS.md)** 를 함께 따릅니다.
 
+아래 README의 **터미널 명령 예시**는 **macOS**와 **Linux(기본 셸: bash)** 에서 그대로 실행하는 것을 전제로 합니다.
+
 ---
 
 ## 기술 스택 (현재)
@@ -21,11 +23,13 @@ Next.js(App Router) + Prisma(SQLite) + 서버 측 권한 검증을 기준으로 
 
 ## 선행 조건
 
-| 항목 | 권장 |
+**처음 실행하기**를 거의 비어 있는 PC에서 그대로 따라가려면, 아래 도구가 **먼저 설치**되어 있어야 합니다. (설치 여부는 터미널에서 각각 `git --version`, `node -v`, `npm -v`, `openssl version` 등으로 확인할 수 있습니다.)
+
+| 항목 | 설명 |
 | --- | --- |
-| Node.js | **22** (저장소 루트 [`.nvmrc`](./.nvmrc). `nvm use` / Volta 등으로 맞추면 `npm run dev`가 동일 런타임으로 실행됩니다.) |
-| npm | 9 이상 (일반적으로 Node 22와 함께 제공) |
-| Git | 클론·브랜치 작업용 |
+| **Git** | **필수.** 1단계 `git clone`에 사용합니다. [Git 공식 다운로드](https://git-scm.com/downloads) 등에서 설치하세요. |
+| **Node.js 22** + **npm** | **필수.** `npm install`, Prisma, Next 개발 서버에 사용합니다. [Node.js 공식](https://nodejs.org/) 또는 `nvm` / Volta 등으로 **메이저 22**에 맞추면 됩니다(저장소 루트 [`.nvmrc`](./.nvmrc)). `npm`은 Node 설치에 포함되는 경우가 대부분입니다. |
+| **OpenSSL** | **README 3단계**에서 `openssl rand -base64 32`로 키를 만들 때 사용합니다. macOS·일반적인 Linux에는 포함된 경우가 많습니다. 없으면 배포판 패키지 매니저로 `openssl`(또는 동등 패키지)을 설치하세요. |
 
 `npm run dev`는 Node 메이저가 **18 / 20 / 22가 아니면** `npx -y node@22`로 Next 개발 서버를 띄웁니다.  
 로컬과 CI를 맞추려면 **Node 22 사용**을 권장합니다.
