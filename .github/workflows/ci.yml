@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: file:./prisma/ci.sqlite
+  PERSON_DATA_KEY_BASE64: BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  PII_INDEX_KEY_BASE64: BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  JWT_ACCESS_SECRET: ci-placeholder-jwt-access-secret-min-32-chars
+  JWT_REFRESH_SECRET: ci-placeholder-jwt-refresh-secret-min-32-chars
+
+jobs:
+  verify:
+    name: Lint, types, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Required repo files (eslint.config, AGENTS)
+        run: npm run check:repo-files
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prisma schema (build-time DB)
+        run: npx prisma db push --accept-data-loss
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Mutation API audit logging
+        run: npm run check:mutation-audit
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: API integration tests
+        run: npm run test:integration
+
+      - name: Next.js build
+        run: npm run build
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prisma schema (optional for dev server)
+        run: npx prisma db push --accept-data-loss
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E
+        run: npm run test:e2e

@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  LEAVE_OF_ABSENCE
+  WITHDRAWN
+  GRADUATED
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  LEAVE
+  RETIRED
+  INACTIVE
+}
+
+enum StaffAuthorityTier {
+  STAFF
+  HIGHER_STAFF
+  VICE_HEADMASTER
+  HEADMASTER
+}
+
+enum IdentityProvider {
+  MICROSOFT
+  ONELOGIN
+}
+
+enum PersonType {
+  STUDENT
+  STAFF
+  ADMIN
+}
+
+enum InformationChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                 String      @id @default(cuid())
+  /// Canonical login id: always stored lower(trim) via `normalizeLoginId`. Uniqueness is enforced here (app + DB) for case-insensitive identity.
+  loginId            String      @unique
+  passwordHash       String
+  roleId             String
+  status             UserStatus  @default(ACTIVE)
+  mustChangePassword Boolean     @default(true)
+  failedLoginAttempts Int        @default(0)
+  lastLoginAt        DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  role       Role        @relation(fields: [roleId], references: [id])
+  profile    UserProfile?
+  student    Student?
+  staff      Staff?
+  audits     AuditLog[]    @relation("actorAuditLogs")
+  notes      StudentNote[] @relation("authorStudentNotes")
+  sessions   Session[]
+  resetTokens PasswordResetToken[]
+  loginAttempts LoginAttempt[]
+  externalIdentities ExternalIdentity[]
+  person             Person?
+  segmentationConfigsUpdated StudentSegmentationConfig[] @relation("segmentationConfigUpdatedBy")
+  informationChangeRequestsRequested InformationChangeRequest[] @relation("informationChangeRequestRequester")
+  informationChangeRequestsTargeted InformationChangeRequest[] @relation("informationChangeRequestTarget")
+  informationChangeRequestsHandled InformationChangeRequest[] @relation("informationChangeRequestHandler")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  description String?
+
+  users           User[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  description String?
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  /// Korean legal / school-record given name (이름)
+  firstNameKo String
+  /// Korean family name (성)
+  lastNameKo  String
+  /// English / passport given name
+  firstNameEn String?
+  middleNameEn String?
+  lastNameEn  String?
+  photoUrl    String?
+  gender      String?
+  dateOfBirth DateTime?
+  email       String?  @unique
+  phone       String?
+  address     String?
+  termCountry      String?
+  termAddressLine1 String?
+  termAddressLine2 String?
+  termPostCode     String?
+  homeCountry      String?
+  homeAddressLine1 String?
+  homeAddressLine2 String?
+  homePostCode     String?
+  nationality String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Student {
+  id               String            @id @default(cuid())
+  userId           String            @unique
+  studentNo        String            @unique
+  campus           String?
+  gradeLevel       String?
+  homeroom         String?
+  enrollmentStatus EnrollmentStatus
+  admissionDate    DateTime?
+  graduationDate   DateTime?
+  passportNo       String?
+  visaStatus       String?
+  emergencyNote    String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guardians         StudentGuardian[]
+  assignments       StudentAssignment[]
+  statusHistories   StudentStatusHistory[]
+  notes             StudentNote[]
+  certificates      Certificate[]
+}
+
+model Staff {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  employeeNo       String           @unique
+  staffTier        StaffAuthorityTier @default(STAFF)
+  department       String?
+  title            String?
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  hireDate         DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments StudentAssignment[]
+}
+
+model StudentGuardian {
+  id               String   @id @default(cuid())
+  studentId        String
+  name             String
+  relationship     String
+  phone            String?
+  email            String?
+  isPrimary        Boolean  @default(false)
+  emergencyContact Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model StudentAssignment {
+  id             String   @id @default(cuid())
+  staffId        String
+  studentId      String
+  assignmentType String
+  createdAt      DateTime @default(now())
+
+  staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, studentId, assignmentType])
+}
+
+model StudentStatusHistory {
+  id              String   @id @default(cuid())
+  studentId       String
+  oldStatus       String
+  newStatus       String
+  reason          String
+  changedByUserId String
+  changedAt       DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model StudentNote {
+  id           String   @id @default(cuid())
+  studentId    String
+  authorUserId String
+  noteText     String
+  isPrivate    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  author  User    @relation("authorStudentNotes", fields: [authorUserId], references: [id], onDelete: Cascade)
+}
+
+model CertificateType {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  active      Boolean  @default(true)
+
+  certificates Certificate[]
+}
+
+model Certificate {
+  id                String   @id @default(cuid())
+  certificateTypeId String
+  studentId         String
+  requestedByUserId String
+  issuedByUserId    String?
+  purpose           String
+  issueNo           String   @unique
+  verificationCode  String   @unique
+  fileUrl           String?
+  issuedAt          DateTime @default(now())
+
+  certificateType CertificateType @relation(fields: [certificateTypeId], references: [id])
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Notice {
+  id              String   @id @default(cuid())
+  title           String
+  content         String
+  targetRole      String
+  publishedAt     DateTime
+  expiredAt       DateTime?
+  createdByUserId String
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  targetType  String
+  targetId    String
+  detailJson  String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation("actorAuditLogs", fields: [actorUserId], references: [id], onDelete: SetNull)
+}
+
+model Session {
+  id             String   @id @default(cuid())
+  userId         String
+  refreshTokenId String   @unique
+  userAgent      String?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  requestedIp String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model LoginAttempt {
+  id          String   @id @default(cuid())
+  userId      String?
+  loginId     String
+  success     Boolean
+  ipAddress   String?
+  userAgent   String?
+  reasonCode  String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([loginId, createdAt])
+  @@index([ipAddress, createdAt])
+}
+
+model IdentityProviderConfig {
+  id                  String           @id @default(cuid())
+  provider            IdentityProvider @unique
+  enabled             Boolean          @default(false)
+  clientId            String?
+  clientSecret        String?
+  issuerUrl           String?
+  authorizationUrl    String?
+  tokenUrl            String?
+  userInfoUrl         String?
+  scope               String           @default("openid profile email")
+  redirectUri         String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+}
+
+model ExternalIdentity {
+  id            String           @id @default(cuid())
+  userId        String
+  provider      IdentityProvider
+  providerSub   String
+  email         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSub])
+  @@index([userId, provider])
+}
+
+model Person {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  type      PersonType
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections PersonSection[]
+}
+
+model PersonSection {
+  id         String   @id @default(cuid())
+  personId   String
+  sectionKey String
+  version    Int      @default(1)
+  cipherText String
+  nonce      String
+  authTag    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, sectionKey])
+  @@index([personId, sectionKey])
+}
+
+model StudentSegmentationConfig {
+  id              String   @id @default(cuid())
+  scopeKey        String   @unique @default("global")
+  labelsJson      String
+  optionsJson     String
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  updatedBy User? @relation("segmentationConfigUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+}
+
+model InformationChangeRequest {
+  id                 String                         @id @default(cuid())
+  requesterUserId    String
+  targetUserId       String
+  status             InformationChangeRequestStatus @default(PENDING)
+  requestedEmail     String?
+  requestedTermCountry      String?
+  requestedTermAddressLine1 String?
+  requestedTermAddressLine2 String?
+  requestedTermPostCode     String?
+  requestedHomeCountry      String?
+  requestedHomeAddressLine1 String?
+  requestedHomeAddressLine2 String?
+  requestedHomePostCode     String?
+  requesterNote      String?
+  reviewerNote       String?
+  handledByUserId    String?
+  handledAt          DateTime?
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  requester User  @relation("informationChangeRequestRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  target    User  @relation("informationChangeRequestTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  handledBy User? @relation("informationChangeRequestHandler", fields: [handledByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([targetUserId, status])
+}
