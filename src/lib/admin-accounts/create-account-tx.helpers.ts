@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { createUserWithNormalizedLoginIdOrThrow, type UserWithRole } from "@/lib/create-user-with-login-unique";
+import { buildAccountSearchText } from "@/lib/account-search-text";
 import { upsertPersonSection } from "@/lib/person-data";
 import {
   buildOptionalPhotoSectionWrite,
@@ -31,7 +32,18 @@ export async function runCreateAccountCoreInTransaction(
   const createdUser = await createUserWithNormalizedLoginIdOrThrow(tx, {
     loginIdFromRequest: body.loginId,
     passwordHash,
-    roleId
+    roleId,
+    accountSearchText:
+      "profile" in body
+        ? buildAccountSearchText({
+            loginId: body.loginId,
+            firstNameKo: body.profile.firstNameKo,
+            lastNameKo: body.profile.lastNameKo,
+            firstNameEn: body.profile.firstName,
+            middleNameEn: "middleName" in body.profile ? body.profile.middleName : undefined,
+            lastNameEn: body.profile.lastName
+          })
+        : undefined
   });
 
   if ("profile" in body) {
@@ -62,7 +74,9 @@ export async function runCreateAccountCoreInTransaction(
       data: {
         userId: createdUser.id,
         studentNo: `S-${Date.now()}`,
-        enrollmentStatus: "ENROLLED"
+        enrollmentStatus: "ENROLLED",
+        segmentationDepartment: body.profile.segmentation.department || null,
+        segmentationPathway: body.profile.segmentation.pathway || null
       }
     });
   }

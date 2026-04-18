@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { buildAccountSearchText } from "../src/lib/account-search-text";
 import { PERMISSIONS, ROLES } from "../src/lib/permissions";
 import { hashPassword } from "../src/lib/password";
 
@@ -68,6 +69,7 @@ async function main() {
   const adminUser = await prisma.user.upsert({
     where: { loginId: "admin" },
     update: {
+      accountSearchText: buildAccountSearchText({ loginId: "admin", firstNameKo: "관리", lastNameKo: "자", firstNameEn: "Admin", lastNameEn: "User" }),
       passwordHash: adminPasswordHash,
       roleId: roleAdmin.id,
       status: "ACTIVE",
@@ -75,6 +77,7 @@ async function main() {
     },
     create: {
       loginId: "admin",
+      accountSearchText: buildAccountSearchText({ loginId: "admin", firstNameKo: "관리", lastNameKo: "자", firstNameEn: "Admin", lastNameEn: "User" }),
       passwordHash: adminPasswordHash,
       roleId: roleAdmin.id,
       status: "ACTIVE",
@@ -111,6 +114,13 @@ async function main() {
   const demoStudentUser = await prisma.user.upsert({
     where: { loginId: "studentdemo" },
     update: {
+      accountSearchText: buildAccountSearchText({
+        loginId: "studentdemo",
+        firstNameKo: "데모",
+        lastNameKo: "학생",
+        firstNameEn: "Demo",
+        lastNameEn: "Student"
+      }),
       passwordHash: demoStudentPasswordHash,
       roleId: roleStudent.id,
       status: "ACTIVE",
@@ -118,6 +128,13 @@ async function main() {
     },
     create: {
       loginId: "studentdemo",
+      accountSearchText: buildAccountSearchText({
+        loginId: "studentdemo",
+        firstNameKo: "데모",
+        lastNameKo: "학생",
+        firstNameEn: "Demo",
+        lastNameEn: "Student"
+      }),
       passwordHash: demoStudentPasswordHash,
       roleId: roleStudent.id,
       status: "ACTIVE",
@@ -131,7 +148,9 @@ async function main() {
       enrollmentStatus: "ENROLLED",
       campus: "International",
       gradeLevel: "10",
-      homeroom: "10-A"
+      homeroom: "10-A",
+      segmentationDepartment: "Secondary",
+      segmentationPathway: "General"
     },
     create: {
       userId: demoStudentUser.id,
@@ -139,7 +158,9 @@ async function main() {
       enrollmentStatus: "ENROLLED",
       campus: "International",
       gradeLevel: "10",
-      homeroom: "10-A"
+      homeroom: "10-A",
+      segmentationDepartment: "Secondary",
+      segmentationPathway: "General"
     }
   });
   await prisma.userProfile.upsert({
@@ -180,6 +201,13 @@ async function main() {
   const demoStaffUser = await prisma.user.upsert({
     where: { loginId: "staffdemo" },
     update: {
+      accountSearchText: buildAccountSearchText({
+        loginId: "staffdemo",
+        firstNameKo: "데모",
+        lastNameKo: "교직원",
+        firstNameEn: "Demo",
+        lastNameEn: "Staff"
+      }),
       passwordHash: demoStaffPasswordHash,
       roleId: roleStaff.id,
       status: "ACTIVE",
@@ -187,6 +215,13 @@ async function main() {
     },
     create: {
       loginId: "staffdemo",
+      accountSearchText: buildAccountSearchText({
+        loginId: "staffdemo",
+        firstNameKo: "데모",
+        lastNameKo: "교직원",
+        firstNameEn: "Demo",
+        lastNameEn: "Staff"
+      }),
       passwordHash: demoStaffPasswordHash,
       roleId: roleStaff.id,
       status: "ACTIVE",

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { secureClientFetch } from "@/lib/browser-security";
+import { parseFetchResponseJson } from "@/lib/parse-fetch-response-json";
 import type { AccountRoleFilter } from "@/lib/admin-accounts-client";
 import { ACCOUNT_ROLE_FILTER_OPTIONS } from "@/app/admin/accounts/manage/_config/account-role-filter";
 import { useAccountActions } from "@/app/admin/accounts/manage/_hooks/use-account-actions";
@@ -14,7 +15,19 @@ export function useAccountManagePage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [appliedSearch, setAppliedSearch] = useState("");
   const [actorUserId, setActorUserId] = useState<string | null>(null);
-  const { rows, error, setError, reload } = useAccountList(roleFilter, appliedSearch);
+  const {
+    rows,
+    page,
+    total,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    error,
+    setError,
+    reload,
+    goToNextPage,
+    goToPreviousPage
+  } = useAccountList(roleFilter, appliedSearch);
   const dialogs = useAccountDialogs();
   const actions = useAccountActions({
     setPendingId,
@@ -31,12 +44,12 @@ export function useAccountManagePage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const response = await secureClientFetch("/api/me");
-      if (cancelled || !response.ok) {
-        return;
-      }
       try {
-        const body = (await response.json()) as { id?: string };
+        const response = await secureClientFetch("/api/me");
+        if (cancelled || !response.ok) {
+          return;
+        }
+        const { data: body } = await parseFetchResponseJson<{ id?: string }>(response);
         if (body.id) {
           setActorUserId(body.id);
         }
@@ -63,6 +76,13 @@ export function useAccountManagePage() {
     appliedSearch,
     setAppliedSearch,
     rows,
+    page,
+    total,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    goToNextPage,
+    goToPreviousPage,
     dialogs,
     actions,
     actorUserId

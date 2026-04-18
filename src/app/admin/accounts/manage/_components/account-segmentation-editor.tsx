@@ -49,9 +49,22 @@ export default function AccountSegmentationEditor({ account, pending, onSave }: 
   }, [account.id]);
 
   useEffect(() => {
-    setDepartmentOptions(getDepartmentOptions(segmentationConfig));
-    setPathwayOptions(getPathwayOptionsByDepartment(segmentationConfig, department));
-  }, [segmentationConfig, department]);
+    if (loading) {
+      return;
+    }
+    const depts = getDepartmentOptions(segmentationConfig);
+    setDepartmentOptions(depts);
+    setDepartment((d) => (d && depts.includes(d) ? d : ""));
+  }, [loading, segmentationConfig]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+    const paths = getPathwayOptionsByDepartment(segmentationConfig, department);
+    setPathwayOptions(paths);
+    setPathway((p) => (p && paths.includes(p) ? p : ""));
+  }, [loading, segmentationConfig, department]);
 
   return (
     <section className="panel stack">
@@ -63,14 +76,14 @@ export default function AccountSegmentationEditor({ account, pending, onSave }: 
           label={labels.department}
           value={department}
           options={departmentOptions}
-          placeholder="Type or select department"
+          placeholder="Select department"
           onChange={setDepartment}
         />
         <SegmentationOptionInput
           label={labels.pathway}
           value={pathway}
           options={pathwayOptions}
-          placeholder="Type or select pathway"
+          placeholder="Select pathway"
           onChange={setPathway}
         />
       </section>

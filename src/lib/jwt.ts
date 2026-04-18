@@ -11,21 +11,16 @@ export type AuthTokenPayload = {
   tokenType: "access" | "refresh";
 };
 
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
-function resolveJwtSecret(name: "JWT_ACCESS_SECRET" | "JWT_REFRESH_SECRET", devFallback: string): string {
+function resolveJwtSecret(name: "JWT_ACCESS_SECRET" | "JWT_REFRESH_SECRET"): string {
   const value = process.env[name]?.trim();
-  if (value && value.length >= 32) {
+  if (value && value.length >= 32 && !/^REPLACE_WITH_/i.test(value)) {
     return value;
   }
-  if (IS_PRODUCTION) {
-    throw new Error(`${name} is required in production and must be at least 32 characters long`);
-  }
-  return value && value.length > 0 ? value : devFallback;
+  throw new Error(`${name} is required and must be at least 32 characters long`);
 }
 
-const ACCESS_SECRET = resolveJwtSecret("JWT_ACCESS_SECRET", "dev_access_secret_change_me");
-const REFRESH_SECRET = resolveJwtSecret("JWT_REFRESH_SECRET", "dev_refresh_secret_change_me");
+const ACCESS_SECRET = resolveJwtSecret("JWT_ACCESS_SECRET");
+const REFRESH_SECRET = resolveJwtSecret("JWT_REFRESH_SECRET");
 
 const ACCESS_TTL_SECONDS = 15 * 60;
 const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;

@@ -5,8 +5,25 @@ import StaffMembersPanel from "@/app/(portals)/staffportal/_components/staff-mem
 import { useStaffMembersPage } from "@/app/(portals)/staffportal/_hooks/use-staff-members-page";
 
 export default function StaffMembersPage() {
-  const { loading, error, canViewStaff, rows, dialogOpen, dialogError, detail, pendingId, openInformation, closeInformation } =
-    useStaffMembersPage();
+  const {
+    loading,
+    error,
+    canViewStaff,
+    rows,
+    page,
+    total,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    goToNextPage,
+    goToPreviousPage,
+    dialogOpen,
+    dialogError,
+    detail,
+    pendingId,
+    openInformation,
+    closeInformation
+  } = useStaffMembersPage();
 
   if (loading) {
     return <p className="muted">Loading staff information...</p>;
@@ -20,7 +37,18 @@ export default function StaffMembersPage() {
           <p className="muted">Your current staff authority cannot access staff information.</p>
         </section>
       ) : (
-        <StaffMembersPanel rows={rows} onSeeInformation={openInformation} pendingId={pendingId} />
+        <StaffMembersPanel
+          rows={rows}
+          page={page}
+          total={total}
+          totalPages={totalPages}
+          hasNextPage={hasNextPage}
+          hasPreviousPage={hasPreviousPage}
+          onNextPage={goToNextPage}
+          onPreviousPage={goToPreviousPage}
+          onSeeInformation={openInformation}
+          pendingId={pendingId}
+        />
       )}
       <StaffEntityInfoDialog open={dialogOpen} pending={Boolean(pendingId)} error={dialogError} detail={detail} onClose={closeInformation} />
     </section>

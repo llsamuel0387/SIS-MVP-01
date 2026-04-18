@@ -9,26 +9,31 @@ type Context = {
 };
 
 export async function GET(request: Request, context: Context) {
-  const { user, response } = await guardApiRequest(request);
-  if (response || !user) {
-    return response;
-  }
-  const { studentId } = await context.params;
-
   try {
-    assertCanAccessStudent(user, studentId);
-  } catch (error) {
-    const denied = handleAuthzError(error);
-    if (denied) {
-      return denied;
+    const { user, response } = await guardApiRequest(request);
+    if (response || !user) {
+      return response;
     }
-    throw error;
-  }
+    const { studentId } = await context.params;
 
-  const result = await getStudentProfileForApi(studentId);
-  if (!result.ok) {
-    return errorResponse(result.code);
-  }
+    try {
+      assertCanAccessStudent(user, studentId);
+    } catch (error) {
+      const denied = handleAuthzError(error);
+      if (denied) {
+        return denied;
+      }
+      throw error;
+    }
 
-  return NextResponse.json(result.json);
+    const result = await getStudentProfileForApi(studentId);
+    if (!result.ok) {
+      return errorResponse(result.code);
+    }
+
+    return NextResponse.json(result.json);
+  } catch (error) {
+    console.error("[api/students/[studentId] GET]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
+  }
 }

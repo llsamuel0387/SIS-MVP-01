@@ -72,6 +72,58 @@ export function getPathwayOptionsByDepartment(
   return target?.pathways ?? [];
 }
 
+/** Partial PATCH body values after Zod (undefined = leave unchanged). */
+export type StudentSegmentationChoicePatch = {
+  department?: string | undefined;
+  pathway?: string | undefined;
+};
+
+export function mergeStudentSegmentationPatchForAdmin(
+  current: { department: string; pathway: string },
+  patch: StudentSegmentationChoicePatch
+): { department: string; pathway: string } {
+  return {
+    department: patch.department !== undefined ? patch.department : current.department,
+    pathway: patch.pathway !== undefined ? patch.pathway : current.pathway
+  };
+}
+
+/**
+ * Department/pathway must match the global segmentation config (or both empty).
+ * Does not validate `classes`.
+ */
+export function validateStudentSegmentationAgainstConfig(
+  values: StudentSegmentationChoicePatch,
+  config: StudentSegmentationConfig
+): { ok: true } | { ok: false } {
+  const department = (values.department ?? "").trim();
+  const pathway = (values.pathway ?? "").trim();
+  const allowedDepartments = getDepartmentOptions(config);
+
+  if (department === "" && pathway === "") {
+    return { ok: true };
+  }
+  if (department === "" && pathway !== "") {
+    return { ok: false };
+  }
+
+  if (allowedDepartments.length === 0) {
+    return { ok: false };
+  }
+  if (!allowedDepartments.includes(department)) {
+    return { ok: false };
+  }
+
+  const pathways = getPathwayOptionsByDepartment(config, department);
+  if (pathway !== "") {
+    if (pathways.length === 0 || !pathways.includes(pathway)) {
+      return { ok: false };
+    }
+  }
+
+  return { ok: true };
+}
+
 export function readStudentSegmentationSectionPayload(
   payload: Record<string, unknown> | null | undefined
 ): { labels: StudentSegmentationLabels; values: Required<StudentSegmentationValues> } {

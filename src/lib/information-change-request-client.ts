@@ -1,28 +1,5 @@
-import { secureClientFetch } from "@/lib/browser-security";
+import { secureFetchJson } from "@/lib/parse-fetch-response-json";
 import type { RequestedAddress } from "@/lib/information-change-request";
-
-type FetchResult<T> = { ok: boolean; data: T };
-
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<FetchResult<T>> {
-  const response = await secureClientFetch(url, init);
-  const raw = await response.text();
-  let data: T;
-  if (!raw) {
-    data = {} as T;
-  } else {
-    try {
-      data = JSON.parse(raw) as T;
-    } catch {
-      data = {
-        error: {
-          code: "AUTH_INVALID_PAYLOAD",
-          message: "Invalid response format."
-        }
-      } as T;
-    }
-  }
-  return { ok: response.ok, data };
-}
 
 export type InformationChangeRequestRow = {
   id: string;
@@ -54,19 +31,22 @@ export type InformationChangeRequestPayload = {
 };
 
 export async function createInformationChangeRequest(payload: InformationChangeRequestPayload) {
-  return fetchJson<{ ok: boolean; request: { id: string; status: string; createdAt: string } }>("/api/information-change-requests", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  return secureFetchJson<{ ok: boolean; request: { id: string; status: string; createdAt: string } }>(
+    "/api/information-change-requests",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }
+  );
 }
 
 export async function listMyInformationChangeRequests() {
-  return fetchJson<StudentInformationChangeRequestRow[]>("/api/information-change-requests");
+  return secureFetchJson<StudentInformationChangeRequestRow[]>("/api/information-change-requests");
 }
 
 export async function listAdminInformationChangeRequests() {
-  return fetchJson<InformationChangeRequestRow[]>("/api/admin/information-change-requests");
+  return secureFetchJson<InformationChangeRequestRow[]>("/api/admin/information-change-requests");
 }
 
 export async function reviewInformationChangeRequest(
@@ -74,7 +54,7 @@ export async function reviewInformationChangeRequest(
   decision: "APPROVE" | "REJECT",
   reviewerNote?: string
 ) {
-  return fetchJson<{ ok: boolean; status: string }>(`/api/admin/information-change-requests/${requestId}`, {
+  return secureFetchJson<{ ok: boolean; status: string }>(`/api/admin/information-change-requests/${requestId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ decision, reviewerNote })

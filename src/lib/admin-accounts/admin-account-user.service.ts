@@ -2,6 +2,14 @@ import type { AuditAction } from "@/lib/audit";
 import type { SessionUser } from "@/lib/authz";
 import { ERROR_CODES } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
+import { decryptPersonSectionPayload } from "@/lib/person-data";
+import { getStudentSegmentationConfig } from "@/lib/student-segmentation-config";
+import {
+  createEmptyStudentSegmentation,
+  mergeStudentSegmentationPatchForAdmin,
+  readStudentSegmentationSectionPayload,
+  validateStudentSegmentationAgainstConfig
+} from "@/lib/student-segmentation";
 import { STAFF_TIER_PERMISSION_GRANTS } from "@/lib/permissions";
 import { getRolePermissions } from "@/lib/user-admin";
 import { invalidateAllUserSessions } from "@/lib/session";
@@ -90,8 +98,22 @@ export async function patchAdminAccountUser(
   if (segErr) {
     return { ok: false, code: segErr };
   }
+  if (body.staffTier !== undefined && detailRecord.role.code === "STAFF" && !detailRecord.staff) {
+    return { ok: false, code: ERROR_CODES.RESOURCE_STAFF_NOT_FOUND };
+  }
   if (body.segmentation && !target.person) {
     return { ok: false, code: ERROR_CODES.RESOURCE_USER_NOT_FOUND };
+  }
+  if (body.segmentation !== undefined && detailRecord.person && detailRecord.role.code === "STUDENT") {
+    const segmentationSection = detailRecord.person.sections.find((s) => s.sectionKey === "student-segmentation.v1");
+    const currentValues = segmentationSection
+      ? readStudentSegmentationSectionPayload(decryptPersonSectionPayload(segmentationSection)).values
+      : createEmptyStudentSegmentation();
+    const merged = mergeStudentSegmentationPatchForAdmin(currentValues, body.segmentation);
+    const config = await getStudentSegmentationConfig();
+    if (!validateStudentSegmentationAgainstConfig(merged, config).ok) {
+      return { ok: false, code: ERROR_CODES.VALIDATION_SEGMENTATION_INVALID_CHOICE };
+    }
   }
 
   let parsedProfiles: ParsedPatchProfiles | null = null;

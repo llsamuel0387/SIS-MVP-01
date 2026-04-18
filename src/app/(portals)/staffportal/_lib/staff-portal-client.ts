@@ -1,15 +1,13 @@
 "use client";
 
-import { secureClientFetch } from "@/lib/browser-security";
-import type { StaffMe, StaffMemberRow, StaffStudentRow } from "@/app/(portals)/staffportal/_types/staff-portal";
+import { secureFetchJson } from "@/lib/parse-fetch-response-json";
+import type {
+  StaffMe,
+  StaffMemberListPage,
+  StaffStudentListPage
+} from "@/app/(portals)/staffportal/_types/staff-portal";
 
-type FetchResult<T> = { ok: boolean; data: T };
-
-async function fetchJson<T>(url: string): Promise<FetchResult<T>> {
-  const response = await secureClientFetch(url);
-  const data = (await response.json()) as T;
-  return { ok: response.ok, data };
-}
+export const STAFF_DIRECTORY_PAGE_SIZE = 25;
 
 export type StaffStudentDetailResponse = {
   id: string;
@@ -77,21 +75,21 @@ export type StaffMemberDetailResponse = {
 };
 
 export async function getStaffMe() {
-  return fetchJson<StaffMe>("/api/me");
+  return secureFetchJson<StaffMe>("/api/me");
 }
 
-export async function getStaffStudents() {
-  return fetchJson<StaffStudentRow[]>("/api/staff/students");
+export async function getStaffStudents(page = 1, pageSize = STAFF_DIRECTORY_PAGE_SIZE) {
+  return secureFetchJson<StaffStudentListPage>(`/api/staff/students?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getStaffStudentDetail(studentId: string) {
-  return fetchJson<StaffStudentDetailResponse>(`/api/staff/students/${studentId}`);
+  return secureFetchJson<StaffStudentDetailResponse>(`/api/staff/students/${studentId}`);
 }
 
-export async function getStaffMembers() {
-  return fetchJson<StaffMemberRow[]>("/api/staff/members");
+export async function getStaffMembers(page = 1, pageSize = STAFF_DIRECTORY_PAGE_SIZE) {
+  return secureFetchJson<StaffMemberListPage>(`/api/staff/members?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getStaffMemberDetail(staffId: string) {
-  return fetchJson<StaffMemberDetailResponse>(`/api/staff/members/${staffId}`);
+  return secureFetchJson<StaffMemberDetailResponse>(`/api/staff/members/${staffId}`);
 }

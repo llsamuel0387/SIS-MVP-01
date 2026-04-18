@@ -1,4 +1,5 @@
 import type { PermissionCode, StaffTierCode } from "@/lib/permissions";
+import type { PaginatedResponse } from "@/lib/pagination";
 import type { StudentSegmentationConfig } from "@/lib/student-segmentation";
 import type { PortalEntityDetail } from "@/app/(portals)/_types/portal-my-information";
 
@@ -32,3 +33,6 @@ export type StaffMemberRow = {
 export type StaffEntityDetail = PortalEntityDetail;
 
 export type SegmentationConfigForm = StudentSegmentationConfig;
+
+export type StaffStudentListPage = PaginatedResponse<StaffStudentRow>;
+export type StaffMemberListPage = PaginatedResponse<StaffMemberRow>;

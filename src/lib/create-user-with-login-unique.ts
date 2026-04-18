@@ -24,11 +24,13 @@ export async function createUserWithNormalizedLoginId(input: {
   loginIdFromRequest: string;
   passwordHash: string;
   roleId: string;
+  accountSearchText?: string;
 }): Promise<{ ok: true; user: UserWithRole } | { ok: false; reason: "login_id_exists" }> {
   try {
     const user = await prisma.user.create({
       data: {
         loginId: normalizeLoginId(input.loginIdFromRequest),
+        accountSearchText: input.accountSearchText ?? normalizeLoginId(input.loginIdFromRequest),
         passwordHash: input.passwordHash,
         roleId: input.roleId,
         status: "ACTIVE",
@@ -55,12 +57,14 @@ export async function createUserWithNormalizedLoginIdOrThrow(
     loginIdFromRequest: string;
     passwordHash: string;
     roleId: string;
+    accountSearchText?: string;
   }
 ): Promise<UserWithRole> {
   try {
     return await db.user.create({
       data: {
         loginId: normalizeLoginId(input.loginIdFromRequest),
+        accountSearchText: input.accountSearchText ?? normalizeLoginId(input.loginIdFromRequest),
         passwordHash: input.passwordHash,
         roleId: input.roleId,
         status: "ACTIVE",

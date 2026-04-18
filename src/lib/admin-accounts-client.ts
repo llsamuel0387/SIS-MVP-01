@@ -1,8 +1,9 @@
-import { secureClientFetch } from "@/lib/browser-security";
-import { parseFetchResponseJson } from "@/lib/parse-fetch-response-json";
+import type { PaginatedResponse } from "@/lib/pagination";
+import { secureFetchJson } from "@/lib/parse-fetch-response-json";
 import type { StaffTierCode } from "@/lib/permissions";
 
 export type AccountRoleFilter = "ALL" | "STUDENT" | "STAFF" | "ADMIN";
+export const ACCOUNT_LIST_PAGE_SIZE = 25;
 
 export type AccountRow = {
   id: string;
@@ -28,36 +29,45 @@ export type CreateAdminAccountPayload = {
   profile?: unknown;
 };
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; data: T }> {
-  const response = await secureClientFetch(url, init);
-  return parseFetchResponseJson<T>(response);
-}
-
-function buildAccountQuery(roleFilter: AccountRoleFilter, query?: string, suggest?: boolean): string {
+function buildAccountQuery(
+  roleFilter: AccountRoleFilter,
+  query?: string,
+  suggest?: boolean,
+  pagination?: { page?: number; pageSize?: number }
+): string {
   const roleParam = roleFilter === "ALL" ? "" : `role=${roleFilter}`;
   const queryParam = query ? `${roleParam ? "&" : ""}q=${encodeURIComponent(query)}` : "";
   const suggestParam = suggest ? `${roleParam || queryParam ? "&" : ""}suggest=1` : "";
-  const qs = [roleParam, queryParam, suggestParam].filter(Boolean).join("");
+  const pageParam = !suggest && pagination?.page ? `${roleParam || queryParam || suggestParam ? "&" : ""}page=${pagination.page}` : "";
+  const pageSizeParam =
+    !suggest && pagination?.pageSize
+      ? `${roleParam || queryParam || suggestParam || pageParam ? "&" : ""}pageSize=${pagination.pageSize}`
+      : "";
+  const qs = [roleParam, queryParam, suggestParam, pageParam, pageSizeParam].filter(Boolean).join("");
   return qs ? `?${qs}` : "";
 }
 
-export async function listAccounts(roleFilter: AccountRoleFilter, query?: string): Promise<{ ok: boolean; data: AccountRow[] }> {
-  return await fetchJson<AccountRow[]>(`/api/admin/accounts${buildAccountQuery(roleFilter, query)}`);
+export async function listAccounts(
+  roleFilter: AccountRoleFilter,
+  query?: string,
+  pagination?: { page?: number; pageSize?: number }
+): Promise<{ ok: boolean; data: PaginatedResponse<AccountRow> }> {
+  return await secureFetchJson<PaginatedResponse<AccountRow>>(`/api/admin/accounts${buildAccountQuery(roleFilter, query, false, pagination)}`);
 }
 
 export async function suggestAccounts(
   roleFilter: AccountRoleFilter,
   query: string
 ): Promise<{ ok: boolean; data: AccountSuggestion[] }> {
-  return await fetchJson<AccountSuggestion[]>(`/api/admin/accounts${buildAccountQuery(roleFilter, query, true)}`);
+  return await secureFetchJson<AccountSuggestion[]>(`/api/admin/accounts${buildAccountQuery(roleFilter, query, true)}`);
 }
 
 export async function getAccountDetail<T>(userId: string): Promise<{ ok: boolean; data: T }> {
-  return await fetchJson<T>(`/api/admin/accounts/${userId}`);
+  return await secureFetchJson<T>(`/api/admin/accounts/${userId}`);
 }
 
 export async function createAdminAccount(payload: CreateAdminAccountPayload): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson("/api/admin/accounts", {
+  return await secureFetchJson("/api/admin/accounts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
@@ -68,7 +78,7 @@ export async function updateAccountStatus(
   userId: string,
   status: "ACTIVE" | "INACTIVE"
 ): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson(`/api/admin/accounts/${userId}`, {
+  return await secureFetchJson(`/api/admin/accounts/${userId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status })
@@ -79,7 +89,7 @@ export async function updateAccountStaffTier(
   userId: string,
   staffTier: StaffTierCode
 ): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson(`/api/admin/accounts/${userId}`, {
+  return await secureFetchJson(`/api/admin/accounts/${userId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ staffTier })
@@ -90,7 +100,7 @@ export async function updateStudentEnrollmentStatus(
   userId: string,
   enrollmentStatus: "ENROLLED" | "NOT_ENROLLED"
 ): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson(`/api/admin/accounts/${userId}`, {
+  return await secureFetchJson(`/api/admin/accounts/${userId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enrollmentStatus })
@@ -101,7 +111,7 @@ export async function updateStudentSegmentation(
   userId: string,
   segmentation: { department?: string; pathway?: string }
 ): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson(`/api/admin/accounts/${userId}`, {
+  return await secureFetchJson(`/api/admin/accounts/${userId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ segmentation })
@@ -135,7 +145,7 @@ export async function updateAccountProfile(
   userId: string,
   profile: AccountProfileUpdatePayload
 ): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson(`/api/admin/accounts/${userId}`, {
+  return await secureFetchJson(`/api/admin/accounts/${userId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ profile })
@@ -143,7 +153,7 @@ export async function updateAccountProfile(
 }
 
 export async function deleteAccountById(userId: string): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson(`/api/admin/accounts/${userId}`, {
+  return await secureFetchJson(`/api/admin/accounts/${userId}`, {
     method: "DELETE"
   });
 }
@@ -157,7 +167,7 @@ export async function resetAccountPassword(
   if (currentPassword) {
     body.currentPassword = currentPassword;
   }
-  return await fetchJson("/api/auth/password-reset", {
+  return await secureFetchJson("/api/auth/password-reset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)

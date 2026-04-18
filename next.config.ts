@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
   distDir,
   poweredByHeader: false,
   reactStrictMode: true,
-  outputFileTracingRoot: path.resolve(__dirname),
+  /** Tracing root is for production output; in dev it can contribute to stale/wrong server chunk paths. */
+  ...(process.env.NODE_ENV === "production" ? { outputFileTracingRoot: path.resolve(__dirname) } : {}),
   async headers() {
     // Next App Router serves inline flight/hydration chunks; without `'unsafe-inline'` (or nonces),
     // production `next start` + Playwright see an empty shell after blocked scripts.

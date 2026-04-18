@@ -10,7 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DATABASE_URL: file:./prisma/ci.sqlite
+  DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres?schema=public
+  SIS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sis_mvp_integration?schema=public
   PERSON_DATA_KEY_BASE64: BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
   PII_INDEX_KEY_BASE64: BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
   JWT_ACCESS_SECRET: ci-placeholder-jwt-access-secret-min-32-chars
@@ -21,6 +22,18 @@ jobs:
     name: Lint, types, tests, build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +46,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Required repo files (eslint.config, AGENTS)
         run: npm run check:repo-files
@@ -65,6 +81,18 @@ jobs:
     name: Playwright E2E
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,6 +105,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Prisma generate
         run: npx prisma generate

@@ -10,13 +10,18 @@ import { createMyInformationChangeRequest } from "@/lib/information-change-reque
 import { findStudentIdByUserId } from "@/lib/students/find-student-for-user.service";
 
 export async function GET(request: Request) {
-  const { user, response } = await guardApiRequest(request, { roles: [ROLES.student] });
-  if (response || !user) {
-    return response;
-  }
+  try {
+    const { user, response } = await guardApiRequest(request, { roles: [ROLES.student] });
+    if (response || !user) {
+      return response;
+    }
 
-  const items = await listMyInformationChangeRequests(user.id);
-  return NextResponse.json(items);
+    const items = await listMyInformationChangeRequests(user.id);
+    return NextResponse.json(items);
+  } catch (error) {
+    console.error("[api/information-change-requests GET]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
+  }
 }
 
 export async function POST(request: Request) {

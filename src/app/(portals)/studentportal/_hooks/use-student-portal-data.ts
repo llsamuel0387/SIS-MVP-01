@@ -28,6 +28,12 @@ export function useStudentPortalData() {
       }
 
       const data = result.data;
+      if (!data.profile) {
+        setError("Profile data is incomplete.");
+        setMyInformation(null);
+        setLoading(false);
+        return;
+      }
       const displayName =
         joinEnglishLegalName(data.profile.firstNameEn, data.profile.middleNameEn, data.profile.lastNameEn).trim() ||
         joinKoreanLegalName(data.profile.firstNameKo, data.profile.lastNameKo).trim() ||

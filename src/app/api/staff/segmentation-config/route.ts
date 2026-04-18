@@ -10,15 +10,20 @@ import {
 } from "@/lib/staff/segmentation-config.service";
 
 export async function GET(request: Request) {
-  const { user, response } = await guardApiRequest(request, {
-    roles: [ROLES.staff, ROLES.admin]
-  });
-  if (response || !user) {
-    return response;
-  }
+  try {
+    const { user, response } = await guardApiRequest(request, {
+      roles: [ROLES.staff, ROLES.admin]
+    });
+    if (response || !user) {
+      return response;
+    }
 
-  const config = await getStaffSegmentationConfigForApi();
-  return NextResponse.json(config);
+    const config = await getStaffSegmentationConfigForApi();
+    return NextResponse.json(config);
+  } catch (error) {
+    console.error("[api/staff/segmentation-config GET]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
+  }
 }
 
 export async function PUT(request: Request) {

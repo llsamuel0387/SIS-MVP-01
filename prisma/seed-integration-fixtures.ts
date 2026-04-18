@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { buildAccountSearchText } from "../src/lib/account-search-text";
 import { INTEGRATION_STUDENT_LOGIN_ID } from "../src/test/integration-constants";
 import { ROLES } from "../src/lib/permissions";
 import { hashPassword } from "../src/lib/password";
@@ -13,6 +14,7 @@ async function main() {
   await prisma.user.create({
     data: {
       loginId: INTEGRATION_STUDENT_LOGIN_ID,
+      accountSearchText: buildAccountSearchText({ loginId: INTEGRATION_STUDENT_LOGIN_ID }),
       passwordHash,
       roleId: roleStudent.id,
       status: "ACTIVE",

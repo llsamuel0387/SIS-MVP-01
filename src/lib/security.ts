@@ -1,4 +1,5 @@
 import type { SessionUser } from "@/lib/authz";
+import { parseCookies } from "@/lib/http";
 import { getSessionCookieName, getSessionUserFromToken } from "@/lib/session";
 
 export function getClientIp(request: Request): string {
@@ -14,18 +15,7 @@ export function getBearerToken(request: Request): string | null {
 }
 
 function getCookieToken(request: Request, cookieName: string): string | null {
-  const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) {
-    return null;
-  }
-
-  const entries = cookieHeader.split(";").map((part) => part.trim());
-  for (const entry of entries) {
-    if (entry.startsWith(`${cookieName}=`)) {
-      return decodeURIComponent(entry.slice(cookieName.length + 1));
-    }
-  }
-  return null;
+  return parseCookies(request)[cookieName] ?? null;
 }
 
 export function getSessionTokenFromRequest(request: Request): string | null {

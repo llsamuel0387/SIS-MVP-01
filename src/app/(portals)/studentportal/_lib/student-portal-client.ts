@@ -1,21 +1,13 @@
 "use client";
 
-import { secureClientFetch } from "@/lib/browser-security";
-
-type FetchResult<T> = { ok: boolean; data: T };
-
-async function fetchJson<T>(url: string): Promise<FetchResult<T>> {
-  const response = await secureClientFetch(url);
-  const data = (await response.json()) as T;
-  return { ok: response.ok, data };
-}
+import { secureFetchJson } from "@/lib/parse-fetch-response-json";
 
 export type StudentMyProfileResponse = {
   id: string;
   studentNo: string;
   enrollmentStatus: string;
   photoDataUrl?: string | null;
-  profile: {
+  profile?: {
     firstNameKo?: string | null;
     lastNameKo?: string | null;
     firstNameEn?: string | null;
@@ -42,5 +34,5 @@ export type StudentMyProfileResponse = {
 };
 
 export async function getStudentMyProfile() {
-  return fetchJson<StudentMyProfileResponse>("/api/my/profile");
+  return secureFetchJson<StudentMyProfileResponse>("/api/my/profile");
 }

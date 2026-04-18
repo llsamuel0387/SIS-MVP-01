@@ -6,6 +6,8 @@ import { getRolePermissions } from "@/lib/user-admin";
 import { LoginIdAlreadyExistsError, type UserWithRole } from "@/lib/create-user-with-login-unique";
 import { prepareOptionalProfilePhoto, type AdminAccountCreateBody, type PersonSectionWrite } from "@/lib/admin-accounts/create-admin-account.helpers";
 import { runCreateAccountCoreInTransaction } from "@/lib/admin-accounts/create-account-tx.helpers";
+import { getStudentSegmentationConfig } from "@/lib/student-segmentation-config";
+import { validateStudentSegmentationAgainstConfig } from "@/lib/student-segmentation";
 
 export type CreateAdminAccountResult =
   | { ok: true; user: UserWithRole; permissions: string[] }
@@ -14,6 +16,7 @@ export type CreateAdminAccountResult =
       errorCode:
         | typeof ERROR_CODES.ACCOUNT_ALREADY_EXISTS
         | typeof ERROR_CODES.VALIDATION_INVALID_PAYLOAD
+        | typeof ERROR_CODES.VALIDATION_SEGMENTATION_INVALID_CHOICE
         | typeof ERROR_CODES.ACCOUNT_ROLE_NOT_CONFIGURED;
     };
 
@@ -28,6 +31,13 @@ export async function preflightAndCreateAdminAccount(input: CreateAdminAccountIn
   const existingId = await findUserIdByLoginIdInsensitive(input.body.loginId);
   if (existingId) {
     return { ok: false, errorCode: ERROR_CODES.ACCOUNT_ALREADY_EXISTS };
+  }
+  if (input.body.role === "STUDENT" && "profile" in input.body) {
+    const config = await getStudentSegmentationConfig();
+    const segCheck = validateStudentSegmentationAgainstConfig(input.body.profile.segmentation, config);
+    if (!segCheck.ok) {
+      return { ok: false, errorCode: ERROR_CODES.VALIDATION_SEGMENTATION_INVALID_CHOICE };
+    }
   }
   return createAdminAccountInTransaction(input);
 }

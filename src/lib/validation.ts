@@ -97,9 +97,10 @@ const studentSegmentationSchema = z.object({
     .transform((values) => (values ?? []).map((value) => value.trim()).filter(Boolean))
 });
 
+/** PATCH: allow explicit `""` to clear — do not use `emptyToUndefined` (that would drop clears and keep old values). */
 export const studentSegmentationPatchSchema = z.object({
-  department: z.preprocess(emptyToUndefined, z.string().max(80).transform(sanitizeText).optional()),
-  pathway: z.preprocess(emptyToUndefined, z.string().max(80).transform(sanitizeText).optional())
+  department: z.string().max(80).transform(sanitizeText).optional(),
+  pathway: z.string().max(80).transform(sanitizeText).optional()
 });
 
 export const studentSegmentationConfigSchema = z.object({

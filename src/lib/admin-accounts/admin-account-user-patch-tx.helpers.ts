@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { UserStatus } from "@prisma/client";
+import { buildAccountSearchText } from "@/lib/account-search-text";
 import type { StaffTierCode } from "@/lib/permissions";
 import { decryptPersonSectionPayload, upsertPersonSection } from "@/lib/person-data";
 import { readStudentSegmentationSectionPayload, toStudentSegmentationSectionPayload } from "@/lib/student-segmentation";
@@ -28,18 +29,27 @@ export async function applySegmentationPatchInTx(
   const currentSegmentation = existingSection
     ? readStudentSegmentationSectionPayload(decryptPersonSectionPayload(existingSection))
     : readStudentSegmentationSectionPayload(null);
+  const nextDepartment = parsedSegmentation.department ?? currentSegmentation.values.department;
+  const nextPathway = parsedSegmentation.pathway ?? currentSegmentation.values.pathway;
   await upsertPersonSection(
     {
       personId: person.id,
       sectionKey: "student-segmentation.v1",
       payload: toStudentSegmentationSectionPayload({
-        department: parsedSegmentation.department ?? currentSegmentation.values.department,
-        pathway: parsedSegmentation.pathway ?? currentSegmentation.values.pathway,
+        department: nextDepartment,
+        pathway: nextPathway,
         classes: currentSegmentation.values.classes
       })
     },
     tx
   );
+  await tx.student.updateMany({
+    where: { userId: person.userId },
+    data: {
+      segmentationDepartment: nextDepartment || null,
+      segmentationPathway: nextPathway || null
+    }
+  });
 }
 
 export async function applyProfilePatchInTx(
@@ -106,6 +116,19 @@ export async function applyProfilePatchInTx(
       homePostCode: encryptNullableSensitiveField(homeAddress?.postCode)
     }
   });
+  await tx.user.update({
+    where: { id: userId },
+    data: {
+      accountSearchText: buildAccountSearchText({
+        loginId: target.loginId,
+        firstNameKo: profileData.firstNameKo,
+        lastNameKo: profileData.lastNameKo,
+        firstNameEn: profileData.firstName,
+        middleNameEn: profileData.middleName,
+        lastNameEn: profileData.lastName
+      })
+    }
+  });
 
   let personId = target.person?.id;
   if (!personId) {
@@ -168,33 +191,36 @@ export async function applyUserControlFieldsInTx(
     return;
   }
 
-  await tx.user.update({
-    where: { id: userId },
-    data: {
-      ...(validStatus
-        ? {
-            status: body.status as UserStatus,
-            ...(body.status === "ACTIVE" ? { failedLoginAttempts: 0 } : {})
-          }
-        : {}),
-      ...(body.enrollmentStatus
-        ? {
-            student: {
-              update: {
-                enrollmentStatus: body.enrollmentStatus === "ENROLLED" ? "ENROLLED" : "WITHDRAWN"
-              }
+  const userData: Prisma.UserUpdateInput = {
+    ...(validStatus
+      ? {
+          status: body.status as UserStatus,
+          ...(body.status === "ACTIVE" ? { failedLoginAttempts: 0 } : {})
+        }
+      : {}),
+    ...(body.enrollmentStatus
+      ? {
+          student: {
+            update: {
+              enrollmentStatus: body.enrollmentStatus === "ENROLLED" ? "ENROLLED" : "WITHDRAWN"
             }
           }
-        : {}),
-      ...(body.staffTier
-        ? {
-            staff: {
-              update: {
-                staffTier: body.staffTier as StaffTierCode
-              }
-            }
-          }
-        : {})
-    }
-  });
+        }
+      : {})
+  };
+
+  if (Object.keys(userData).length > 0) {
+    await tx.user.update({
+      where: { id: userId },
+      data: userData
+    });
+  }
+
+  /** Staff tier on `User` nested update can throw opaquely; `Staff` row update is explicit. */
+  if (body.staffTier) {
+    await tx.staff.update({
+      where: { userId },
+      data: { staffTier: body.staffTier as StaffTierCode }
+    });
+  }
 }

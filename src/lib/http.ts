@@ -1,3 +1,11 @@
+function decodeCookieValue(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
 export function parseCookies(request: Request): Record<string, string> {
   const cookieHeader = request.headers.get("cookie");
   if (!cookieHeader) {
@@ -10,7 +18,11 @@ export function parseCookies(request: Request): Record<string, string> {
     if (!key) {
       return acc;
     }
-    acc[key] = decodeURIComponent(rest.join("=").trim());
+    const decodedValue = decodeCookieValue(rest.join("=").trim());
+    if (decodedValue === null) {
+      return acc;
+    }
+    acc[key] = decodedValue;
     return acc;
   }, {});
 }

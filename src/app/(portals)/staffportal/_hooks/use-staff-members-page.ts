@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getUiErrorMessage } from "@/lib/client-error";
-import type { StaffEntityDetail, StaffMe, StaffMemberRow } from "@/app/(portals)/staffportal/_types/staff-portal";
-import { getStaffMe, getStaffMemberDetail, getStaffMembers } from "@/app/(portals)/staffportal/_lib/staff-portal-client";
+import { createEmptyPaginatedResponse } from "@/lib/pagination";
+import type { StaffEntityDetail, StaffMe, StaffMemberListPage, StaffMemberRow } from "@/app/(portals)/staffportal/_types/staff-portal";
+import {
+  getStaffMe,
+  getStaffMemberDetail,
+  getStaffMembers,
+  STAFF_DIRECTORY_PAGE_SIZE
+} from "@/app/(portals)/staffportal/_lib/staff-portal-client";
 import { canViewStaffByPermissions } from "@/app/(portals)/staffportal/_lib/staff-portal-permissions";
 import { toStaffEntityDetail } from "@/app/(portals)/staffportal/_lib/staff-portal-mappers";
 
@@ -11,7 +17,8 @@ export function useStaffMembersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [me, setMe] = useState<StaffMe | null>(null);
-  const [rows, setRows] = useState<StaffMemberRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [rowsPage, setRowsPage] = useState<StaffMemberListPage>(createEmptyPaginatedResponse(STAFF_DIRECTORY_PAGE_SIZE));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogError, setDialogError] = useState("");
   const [detail, setDetail] = useState<StaffEntityDetail | null>(null);
@@ -21,7 +28,7 @@ export function useStaffMembersPage() {
     return canViewStaffByPermissions(me?.permissions ?? []);
   }, [me]);
 
-  async function reload() {
+  const reload = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -36,24 +43,24 @@ export function useStaffMembersPage() {
 
     const canView = canViewStaffByPermissions(meData.permissions);
     if (!canView) {
-      setRows([]);
+      setRowsPage(createEmptyPaginatedResponse(STAFF_DIRECTORY_PAGE_SIZE));
       setLoading(false);
       return;
     }
 
-    const rowsResult = await getStaffMembers();
+    const rowsResult = await getStaffMembers(page, STAFF_DIRECTORY_PAGE_SIZE);
     if (!rowsResult.ok) {
       setError(getUiErrorMessage(rowsResult.data, "Failed to load staff list"));
-      setRows([]);
+      setRowsPage(createEmptyPaginatedResponse(STAFF_DIRECTORY_PAGE_SIZE));
     } else {
-      setRows(rowsResult.data as StaffMemberRow[]);
+      setRowsPage(rowsResult.data as StaffMemberListPage);
     }
     setLoading(false);
-  }
+  }, [page]);
 
   useEffect(() => {
     void reload();
-  }, []);
+  }, [reload]);
 
   async function openInformation(row: StaffMemberRow) {
     setPendingId(row.id);
@@ -75,7 +82,14 @@ export function useStaffMembersPage() {
     loading,
     error,
     canViewStaff,
-    rows,
+    rows: rowsPage.rows,
+    page: rowsPage.page,
+    total: rowsPage.total,
+    totalPages: rowsPage.totalPages,
+    hasNextPage: rowsPage.hasNextPage,
+    hasPreviousPage: rowsPage.hasPreviousPage,
+    goToNextPage: () => setPage((current) => current + 1),
+    goToPreviousPage: () => setPage((current) => Math.max(1, current - 1)),
     dialogOpen,
     dialogError,
     detail,

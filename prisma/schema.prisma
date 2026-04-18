@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -55,6 +55,7 @@ model User {
   id                 String      @id @default(cuid())
   /// Canonical login id: always stored lower(trim) via `normalizeLoginId`. Uniqueness is enforced here (app + DB) for case-insensitive identity.
   loginId            String      @unique
+  accountSearchText  String      @default("")
   passwordHash       String
   roleId             String
   status             UserStatus  @default(ACTIVE)
@@ -150,6 +151,8 @@ model Student {
   campus           String?
   gradeLevel       String?
   homeroom         String?
+  segmentationDepartment String?
+  segmentationPathway    String?
   enrollmentStatus EnrollmentStatus
   admissionDate    DateTime?
   graduationDate   DateTime?
@@ -428,4 +431,14 @@ model InformationChangeRequest {
 
   @@index([status, createdAt])
   @@index([targetUserId, status])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
 }

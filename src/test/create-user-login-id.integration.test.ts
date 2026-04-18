@@ -12,7 +12,7 @@ describe("createUserWithNormalizedLoginId + loginId uniqueness (integration DB)"
     await prisma.$disconnect();
   });
 
-  it("SQLite P2002 from duplicate User.loginId is recognized by isLoginIdUniqueConstraintViolation", async () => {
+  it("duplicate User.loginId P2002 is recognized by isLoginIdUniqueConstraintViolation", async () => {
     const role = await prisma.role.findUniqueOrThrow({ where: { code: ROLES.student } });
     const passwordHash = await hashPassword("RaceMetaTest#123456");
     const loginId = `z_p2002_meta_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

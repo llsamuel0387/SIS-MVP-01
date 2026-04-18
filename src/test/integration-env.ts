@@ -1,11 +1,27 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { pathToFileURL } from "node:url";
+const DEFAULT_HOST = process.env.SIS_POSTGRES_HOST?.trim() || "127.0.0.1";
+const DEFAULT_PORT = process.env.SIS_POSTGRES_PORT?.trim() || "5432";
+const DEFAULT_USER = process.env.SIS_POSTGRES_USER?.trim() || process.env.USER || "postgres";
+const DEFAULT_PASSWORD = process.env.SIS_POSTGRES_PASSWORD?.trim() || "";
+const DEFAULT_SCHEMA = process.env.SIS_POSTGRES_SCHEMA?.trim() || "public";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+function buildIntegrationDatabaseUrl(dbName: string): string {
+  const url = new URL("postgresql://localhost");
+  url.hostname = DEFAULT_HOST;
+  url.port = DEFAULT_PORT;
+  url.pathname = `/${dbName}`;
+  url.searchParams.set("schema", DEFAULT_SCHEMA);
+  if (DEFAULT_USER) {
+    url.username = DEFAULT_USER;
+  }
+  if (DEFAULT_PASSWORD) {
+    url.password = DEFAULT_PASSWORD;
+  }
+  return url.toString();
+}
 
-/** SQLite file used only for API integration tests (never commit the DB file). */
-export const INTEGRATION_DATABASE_URL = pathToFileURL(path.join(root, "prisma", "test-integration.db")).href;
+/** PostgreSQL database used only for API integration tests. */
+export const INTEGRATION_DATABASE_URL =
+  process.env.SIS_TEST_DATABASE_URL?.trim() || buildIntegrationDatabaseUrl("sis_mvp_integration");
 
 /** Deterministic keys so encryption paths work in CI without copying `.env`. */
 export const INTEGRATION_CRYPTO_ENV = {

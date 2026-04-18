@@ -15,17 +15,22 @@ type Context = {
 };
 
 export async function GET(_request: Request, context: Context) {
-  const { response } = await guardApiRequest(_request, { permissions: [PERMISSIONS.userCreate] });
-  if (response) {
-    return response;
-  }
+  try {
+    const { response } = await guardApiRequest(_request, { permissions: [PERMISSIONS.userCreate] });
+    if (response) {
+      return response;
+    }
 
-  const { userId } = await context.params;
-  const result = await getAdminAccountUserDetail(userId);
-  if (!result.ok) {
-    return errorResponse(result.code);
+    const { userId } = await context.params;
+    const result = await getAdminAccountUserDetail(userId);
+    if (!result.ok) {
+      return errorResponse(result.code);
+    }
+    return NextResponse.json(result.json);
+  } catch (error) {
+    console.error("[api/admin/accounts/[userId] GET]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
   }
-  return NextResponse.json(result.json);
 }
 
 export async function PATCH(request: Request, context: Context) {
@@ -71,26 +76,31 @@ export async function PATCH(request: Request, context: Context) {
 }
 
 export async function DELETE(request: Request, context: Context) {
-  const { user: actor, response } = await guardApiRequest(request, {
-    permissions: [PERMISSIONS.userDisable]
-  });
-  if (response || !actor) {
-    return response;
+  try {
+    const { user: actor, response } = await guardApiRequest(request, {
+      permissions: [PERMISSIONS.userDisable]
+    });
+    if (response || !actor) {
+      return response;
+    }
+
+    const { userId } = await context.params;
+    const result = await deleteAdminAccountUser(actor, userId);
+    if (!result.ok) {
+      return errorResponse(result.code);
+    }
+
+    await writeAuditLogForRequest(request, {
+      actorUserId: actor.id,
+      action: result.data.audit.action,
+      targetType: "USER",
+      targetId: userId,
+      detail: result.data.audit.detail
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[api/admin/accounts/[userId] DELETE]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
   }
-
-  const { userId } = await context.params;
-  const result = await deleteAdminAccountUser(actor, userId);
-  if (!result.ok) {
-    return errorResponse(result.code);
-  }
-
-  await writeAuditLogForRequest(request, {
-    actorUserId: actor.id,
-    action: result.data.audit.action,
-    targetType: "USER",
-    targetId: userId,
-    detail: result.data.audit.detail
-  });
-
-  return NextResponse.json({ ok: true });
 }

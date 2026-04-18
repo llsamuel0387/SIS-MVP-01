@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import ChangePasswordModal from "@/app/_components/change-password-modal";
 import { readCookie, secureClientFetch } from "@/lib/browser-security";
+import { parseFetchResponseJson } from "@/lib/parse-fetch-response-json";
 
 type InternalTopbarLink = {
   href: string;
@@ -43,13 +44,22 @@ export default function InternalTopbar({
       setPending(true);
       setError("");
     }
-    const response = await secureClientFetch(LOGOUT_ENDPOINT, {
-      method: "POST",
-      keepalive: Boolean(options?.silent),
-      headers: {
-        "x-csrf-token": readCookie("csrf_token")
+    let response: Response;
+    try {
+      response = await secureClientFetch(LOGOUT_ENDPOINT, {
+        method: "POST",
+        keepalive: Boolean(options?.silent),
+        headers: {
+          "x-csrf-token": readCookie("csrf_token")
+        }
+      });
+    } catch {
+      if (!options?.silent) {
+        setPending(false);
+        setError("Logout failed. Please try again.");
       }
-    });
+      return;
+    }
 
     if (!options?.silent) {
       setPending(false);
@@ -72,12 +82,12 @@ export default function InternalTopbar({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const response = await secureClientFetch("/api/me");
-      if (cancelled || !response.ok) {
-        return;
-      }
       try {
-        const body = (await response.json()) as { id?: string };
+        const response = await secureClientFetch("/api/me");
+        if (cancelled || !response.ok) {
+          return;
+        }
+        const { data: body } = await parseFetchResponseJson<{ id?: string }>(response);
         if (body.id) {
           setActorUserId(body.id);
         }

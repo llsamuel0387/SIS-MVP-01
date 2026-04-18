@@ -9,16 +9,21 @@ import { listMyCertificates } from "@/lib/certificates/list-my-certificates.serv
 import { issueMyCertificate } from "@/lib/certificates/issue-my-certificate.service";
 
 export async function GET(request: Request) {
-  const { user, response } = await guardApiRequest(request, { roles: [ROLES.student] });
-  if (response || !user) {
-    return response;
-  }
-  if (!user.studentId) {
-    return errorResponse(ERROR_CODES.AUTH_FORBIDDEN);
-  }
+  try {
+    const { user, response } = await guardApiRequest(request, { roles: [ROLES.student] });
+    if (response || !user) {
+      return response;
+    }
+    if (!user.studentId) {
+      return errorResponse(ERROR_CODES.AUTH_FORBIDDEN);
+    }
 
-  const items = await listMyCertificates(user.studentId);
-  return NextResponse.json(items);
+    const items = await listMyCertificates(user.studentId);
+    return NextResponse.json(items);
+  } catch (error) {
+    console.error("[api/my/certificates GET]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
+  }
 }
 
 export async function POST(request: Request) {

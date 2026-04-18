@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCooldownMessage, getUiErrorResult } from "@/lib/client-error";
 import { secureClientFetch } from "@/lib/browser-security";
+import { parseFetchResponseJson } from "@/lib/parse-fetch-response-json";
 import type { PortalRole } from "@/app/(public)/_config/portal-login-config";
 import { AppShell } from "@/ui/app-shell";
 
@@ -56,15 +57,28 @@ export default function PortalLogin({
       return;
     }
 
-    const response = await secureClientFetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ loginId, password })
-    });
-    const result = await response.json();
+    let response: Response;
+    try {
+      response = await secureClientFetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId, password })
+      });
+    } catch {
+      setPending(false);
+      setError("Could not reach the server. Please try again.");
+      return;
+    }
+
+    const { ok: httpOk, data: result } = await parseFetchResponseJson<{
+      ok?: boolean;
+      data?: { user?: { role?: string } };
+      error?: { message?: string };
+      details?: { retryAfterSeconds?: number; retryAfterMs?: number; remainingPasswordAttempts?: number };
+    }>(response);
     setPending(false);
 
-    if (!response.ok) {
+    if (!httpOk) {
       const uiError = getUiErrorResult(result, "Login failed.");
       if (uiError.shouldBlockSubmit) {
         setCooldownSeconds(uiError.cooldownSeconds);
@@ -73,7 +87,7 @@ export default function PortalLogin({
       return;
     }
 
-    if (!allowedRoles.includes(result.data?.user?.role)) {
+    if (!allowedRoles.includes((result.data?.user?.role ?? "") as PortalRole)) {
       setError("Your account role cannot access this portal.");
       return;
     }

@@ -5,8 +5,25 @@ import StaffStudentsPanel from "@/app/(portals)/staffportal/_components/staff-st
 import { useStaffStudentsPage } from "@/app/(portals)/staffportal/_hooks/use-staff-students-page";
 
 export default function StaffStudentsPage() {
-  const { loading, error, canViewStudents, rows, dialogOpen, dialogError, detail, pendingId, openInformation, closeInformation } =
-    useStaffStudentsPage();
+  const {
+    loading,
+    error,
+    canViewStudents,
+    rows,
+    page,
+    total,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    goToNextPage,
+    goToPreviousPage,
+    dialogOpen,
+    dialogError,
+    detail,
+    pendingId,
+    openInformation,
+    closeInformation
+  } = useStaffStudentsPage();
 
   if (loading) {
     return <p className="muted">Loading student information...</p>;
@@ -18,7 +35,7 @@ export default function StaffStudentsPage() {
       <section className="grid cols-3">
         <section className="metric stack-sm">
           <span className="eyebrow">Visible Students</span>
-          <strong>{rows.length}</strong>
+          <strong>{total}</strong>
           <p className="muted">Students currently visible to this account.</p>
         </section>
         <section className="metric stack-sm">
@@ -35,7 +52,18 @@ export default function StaffStudentsPage() {
           <p className="muted">Your current staff authority cannot access student information.</p>
         </section>
       ) : (
-        <StaffStudentsPanel rows={rows} onSeeInformation={openInformation} pendingId={pendingId} />
+        <StaffStudentsPanel
+          rows={rows}
+          page={page}
+          total={total}
+          totalPages={totalPages}
+          hasNextPage={hasNextPage}
+          hasPreviousPage={hasPreviousPage}
+          onNextPage={goToNextPage}
+          onPreviousPage={goToPreviousPage}
+          onSeeInformation={openInformation}
+          pendingId={pendingId}
+        />
       )}
       <StaffEntityInfoDialog open={dialogOpen} pending={Boolean(pendingId)} error={dialogError} detail={detail} onClose={closeInformation} />
     </section>

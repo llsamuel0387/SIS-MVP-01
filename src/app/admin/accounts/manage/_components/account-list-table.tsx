@@ -6,6 +6,13 @@ import AccountActionsCell from "@/app/admin/accounts/manage/_components/account-
 type AccountListTableProps = {
   roleFilterLabel: string;
   rows: AccountRow[];
+  page: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
   pendingId: string | null;
   onOpenInfo: (userId: string) => void;
   onUpdateStatus: (userId: string, status: "ACTIVE" | "INACTIVE") => void;
@@ -18,6 +25,13 @@ type AccountListTableProps = {
 export default function AccountListTable({
   roleFilterLabel,
   rows,
+  page,
+  total,
+  totalPages,
+  hasNextPage,
+  hasPreviousPage,
+  onNextPage,
+  onPreviousPage,
   pendingId,
   onOpenInfo,
   onUpdateStatus,
@@ -73,6 +87,19 @@ export default function AccountListTable({
               ) : null}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="muted">
+            Page {page} of {totalPages} · {total} accounts
+          </span>
+          <div className="flex gap-2">
+            <button className="button secondary" type="button" onClick={onPreviousPage} disabled={!hasPreviousPage}>
+              Previous
+            </button>
+            <button className="button secondary" type="button" onClick={onNextPage} disabled={!hasNextPage}>
+              Next
+            </button>
+          </div>
         </div>
       </CardContent>
     </Card>

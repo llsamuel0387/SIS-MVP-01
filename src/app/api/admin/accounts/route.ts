@@ -5,25 +5,33 @@ import { userCreateWithProfileSchema } from "@/lib/validation";
 import { toUserCreateApiResponseBody } from "@/lib/admin-accounts/create-admin-account.helpers";
 import { ERROR_CODES, errorResponse } from "@/lib/api-error";
 import { guardApiRequest } from "@/lib/api-guard";
+import { normalizePageNumber, normalizePageSize } from "@/lib/pagination";
 import {
   preflightAndCreateAdminAccountWithPlainPassword
 } from "@/lib/admin-accounts/create-admin-account.service";
 import { listAdminAccountsForApi } from "@/lib/admin-accounts/admin-accounts-list.service";
 
 export async function GET(request: Request) {
-  const { user: actor, response } = await guardApiRequest(request, { permissions: [PERMISSIONS.userCreate] });
-  if (response || !actor) {
-    return response;
+  try {
+    const { user: actor, response } = await guardApiRequest(request, { permissions: [PERMISSIONS.userCreate] });
+    if (response || !actor) {
+      return response;
+    }
+
+    const role = new URL(request.url).searchParams.get("role");
+    const query = (new URL(request.url).searchParams.get("q") ?? "").trim();
+    const suggestMode = new URL(request.url).searchParams.get("suggest") === "1";
+    const page = normalizePageNumber(new URL(request.url).searchParams.get("page"));
+    const pageSize = normalizePageSize(new URL(request.url).searchParams.get("pageSize"));
+    const roles: RoleCode[] =
+      role === "STUDENT" || role === "STAFF" || role === "ADMIN" ? [role] : ["STUDENT", "STAFF", "ADMIN"];
+
+    const rows = await listAdminAccountsForApi({ roles, query, suggestMode, page, pageSize });
+    return NextResponse.json(rows);
+  } catch (error) {
+    console.error("[api/admin/accounts GET]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
   }
-
-  const role = new URL(request.url).searchParams.get("role");
-  const query = (new URL(request.url).searchParams.get("q") ?? "").trim();
-  const suggestMode = new URL(request.url).searchParams.get("suggest") === "1";
-  const roles: RoleCode[] =
-    role === "STUDENT" || role === "STAFF" || role === "ADMIN" ? [role] : ["STUDENT", "STAFF", "ADMIN"];
-
-  const rows = await listAdminAccountsForApi({ roles, query, suggestMode });
-  return NextResponse.json(rows);
 }
 
 export async function POST(request: Request) {
@@ -73,6 +81,9 @@ export async function POST(request: Request) {
     }
     if (created.errorCode === ERROR_CODES.ACCOUNT_ROLE_NOT_CONFIGURED) {
       return errorResponse(ERROR_CODES.ACCOUNT_ROLE_NOT_CONFIGURED);
+    }
+    if (created.errorCode === ERROR_CODES.VALIDATION_SEGMENTATION_INVALID_CHOICE) {
+      return errorResponse(ERROR_CODES.VALIDATION_SEGMENTATION_INVALID_CHOICE);
     }
     return errorResponse(ERROR_CODES.VALIDATION_INVALID_PAYLOAD);
   }

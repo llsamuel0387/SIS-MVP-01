@@ -68,6 +68,11 @@ export function useStudentInformationEdit() {
       setLoading(false);
       return;
     }
+    if (!profileResult.data.profile) {
+      setError("Profile data is incomplete.");
+      setLoading(false);
+      return;
+    }
 
     setCurrent({
       email: profileResult.data.profile.email ?? "",

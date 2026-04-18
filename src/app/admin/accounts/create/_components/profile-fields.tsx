@@ -306,11 +306,18 @@ export function StudentProfileFields({ value, onChange, segmentationConfig }: St
             label={labels.department}
             value={value.segmentation.department}
             options={departmentOptions}
-            placeholder="Type or select department"
+            placeholder="Select department"
             onChange={(nextDepartment) =>
               onChange({
                 ...value,
-                segmentation: { ...value.segmentation, department: nextDepartment }
+                segmentation: {
+                  ...value.segmentation,
+                  department: nextDepartment,
+                  pathway:
+                    nextDepartment === value.segmentation.department
+                      ? value.segmentation.pathway
+                      : ""
+                }
               })
             }
           />
@@ -318,7 +325,7 @@ export function StudentProfileFields({ value, onChange, segmentationConfig }: St
             label={labels.pathway}
             value={value.segmentation.pathway}
             options={pathwayOptions}
-            placeholder="Type or select pathway"
+            placeholder="Select pathway"
             onChange={(nextPathway) =>
               onChange({
                 ...value,

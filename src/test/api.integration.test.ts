@@ -1,5 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { GET as getAdminAccounts } from "@/app/api/admin/accounts/route";
 import { GET as getMe } from "@/app/api/me/route";
+import { GET as getStaffMembers } from "@/app/api/staff/members/route";
 import { GET as getStaffStudents } from "@/app/api/staff/students/route";
 import { POST as postInformationChangeRequest } from "@/app/api/information-change-requests/route";
 import { POST as postPasswordReset } from "@/app/api/auth/password-reset/route";
@@ -35,6 +37,65 @@ describe("API handlers (integration DB)", () => {
     const token = await createSession({ userId: user.id });
     const res = await getStaffStudents(integrationApiRequest("/api/staff/students", { sessionToken: token }));
     expect(res.status).toBe(403);
+  });
+
+  it("GET /api/admin/accounts returns paginated list payload", async () => {
+    const admin = await prisma.user.findUniqueOrThrow({ where: { loginId: "admin" } });
+    const token = await createSession({ userId: admin.id });
+    const res = await getAdminAccounts(integrationApiRequest("/api/admin/accounts?page=1&pageSize=1", { sessionToken: token }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      rows: Array<{ id: string; loginId: string; name: string }>;
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+    };
+    expect(body.page).toBe(1);
+    expect(body.pageSize).toBe(1);
+    expect(body.total).toBeGreaterThanOrEqual(1);
+    expect(body.totalPages).toBeGreaterThanOrEqual(1);
+    expect(body.rows.length).toBe(1);
+    expect(body.rows[0]?.id).toBeTruthy();
+    expect(body.rows[0]?.loginId).toBeTruthy();
+  });
+
+  it("GET /api/staff/students returns paginated payload for staff actor", async () => {
+    const staff = await prisma.user.findUniqueOrThrow({ where: { loginId: "staffdemo" } });
+    const token = await createSession({ userId: staff.id });
+    const res = await getStaffStudents(integrationApiRequest("/api/staff/students?page=1&pageSize=1", { sessionToken: token }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      rows: Array<{ id: string; name: string; studentNo: string }>;
+      page: number;
+      total: number;
+      totalPages: number;
+    };
+    expect(body.page).toBe(1);
+    expect(body.total).toBeGreaterThanOrEqual(1);
+    expect(body.totalPages).toBeGreaterThanOrEqual(1);
+    expect(body.rows.length).toBe(1);
+    expect(body.rows[0]?.studentNo).toBeTruthy();
+  });
+
+  it("GET /api/staff/members returns paginated payload for staff actor", async () => {
+    const staff = await prisma.user.findUniqueOrThrow({ where: { loginId: "staffdemo" } });
+    const token = await createSession({ userId: staff.id });
+    const res = await getStaffMembers(integrationApiRequest("/api/staff/members?page=1&pageSize=1", { sessionToken: token }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      rows: Array<{ id: string; name: string; staffNo: string }>;
+      page: number;
+      total: number;
+      totalPages: number;
+    };
+    expect(body.page).toBe(1);
+    expect(body.total).toBeGreaterThanOrEqual(1);
+    expect(body.totalPages).toBeGreaterThanOrEqual(1);
+    expect(body.rows.length).toBe(1);
+    expect(body.rows[0]?.staffNo).toBeTruthy();
   });
 
   it("POST /api/information-change-requests rejects missing CSRF on mutating request", async () => {

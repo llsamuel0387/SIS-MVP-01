@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { secureClientFetch } from "@/lib/browser-security";
+import { parseFetchResponseJson } from "@/lib/parse-fetch-response-json";
 
 type ChangePasswordModalProps = {
   open: boolean;
@@ -54,17 +55,24 @@ export default function ChangePasswordModal({ open, onClose, actorUserId }: Chan
     }
 
     setPending(true);
-    const response = await secureClientFetch("/api/auth/password-reset", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        targetUserId: actorUserId,
-        currentPassword,
-        newPassword
-      })
-    });
+    let response: Response;
+    try {
+      response = await secureClientFetch("/api/auth/password-reset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          targetUserId: actorUserId,
+          currentPassword,
+          newPassword
+        })
+      });
+    } catch {
+      setPending(false);
+      setGenericError("Could not reach the server. Please try again.");
+      return;
+    }
     setPending(false);
 
     if (response.ok) {
@@ -72,13 +80,9 @@ export default function ChangePasswordModal({ open, onClose, actorUserId }: Chan
       return;
     }
 
-    let payload: { details?: { fields?: ApiField[] }; error?: { message?: string } };
-    try {
-      payload = (await response.json()) as typeof payload;
-    } catch {
-      setGenericError("Password change failed. Please try again.");
-      return;
-    }
+    const { data: payload } = await parseFetchResponseJson<{ details?: { fields?: ApiField[] }; error?: { message?: string } }>(
+      response
+    );
 
     const fieldErrors = payload.details?.fields ?? [];
     const currentMsg = fieldErrors.find((f) => f.path === "currentPassword")?.message;

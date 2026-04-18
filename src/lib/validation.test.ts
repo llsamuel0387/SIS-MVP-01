@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { loginSchema, sanitizeText } from "@/lib/validation";
+import { loginSchema, sanitizeText, studentSegmentationPatchSchema } from "@/lib/validation";
 
 describe("sanitizeText", () => {
   it("strips angle brackets and trims", () => {
     expect(sanitizeText("  a<b>c  ")).toBe("abc");
+  });
+});
+
+describe("studentSegmentationPatchSchema", () => {
+  it("preserves empty strings so PATCH can clear department/pathway", () => {
+    const out = studentSegmentationPatchSchema.parse({ department: "", pathway: "" });
+    expect(out.department).toBe("");
+    expect(out.pathway).toBe("");
+  });
+
+  it("still accepts omitted keys as undefined", () => {
+    const out = studentSegmentationPatchSchema.parse({});
+    expect(out.department).toBeUndefined();
+    expect(out.pathway).toBeUndefined();
   });
 });
 

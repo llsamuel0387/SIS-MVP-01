@@ -1,4 +1,4 @@
-import { secureClientFetch } from "@/lib/browser-security";
+import { secureFetchJson } from "@/lib/parse-fetch-response-json";
 
 export type SsoProvider = "MICROSOFT" | "ONELOGIN";
 
@@ -15,21 +15,15 @@ export type SsoProviderRow = {
   hasClientSecret: boolean;
 };
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; data: T }> {
-  const response = await secureClientFetch(url, init);
-  const data = (await response.json()) as T;
-  return { ok: response.ok, data };
-}
-
 export async function listSsoProviders(): Promise<{ ok: boolean; data: SsoProviderRow[] }> {
-  return await fetchJson<SsoProviderRow[]>("/api/admin/sso-providers");
+  return await secureFetchJson<SsoProviderRow[]>("/api/admin/sso-providers");
 }
 
 export async function saveSsoProvider(
   provider: SsoProviderRow,
   secret: string
 ): Promise<{ ok: boolean; data: unknown }> {
-  return await fetchJson(`/api/admin/sso-providers/${provider.provider}`, {
+  return await secureFetchJson(`/api/admin/sso-providers/${provider.provider}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

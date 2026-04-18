@@ -11,47 +11,52 @@ type Context = {
 };
 
 export async function PATCH(request: Request, context: Context) {
-  const { user: actor, response } = await guardApiRequest(request);
-  if (response || !actor) {
-    return response;
-  }
-
-  const { studentId } = await context.params;
-
   try {
-    assertCanAccessStudent(actor, studentId);
-  } catch (error) {
-    const denied = handleAuthzError(error);
-    if (denied) {
-      return denied;
+    const { user: actor, response } = await guardApiRequest(request);
+    if (response || !actor) {
+      return response;
     }
-    throw error;
+
+    const { studentId } = await context.params;
+
+    try {
+      assertCanAccessStudent(actor, studentId);
+    } catch (error) {
+      const denied = handleAuthzError(error);
+      if (denied) {
+        return denied;
+      }
+      throw error;
+    }
+
+    let body: { newStatus: "ENROLLED" | "LEAVE_OF_ABSENCE" | "WITHDRAWN" | "GRADUATED"; reason: string };
+    try {
+      body = statusChangeSchema.parse(await request.json());
+    } catch {
+      return errorResponse(ERROR_CODES.VALIDATION_INVALID_PAYLOAD);
+    }
+
+    const result = await patchStudentEnrollmentStatus({
+      actor,
+      studentId,
+      newStatus: body.newStatus,
+      reason: body.reason
+    });
+    if (!result.ok) {
+      return errorResponse(result.code);
+    }
+
+    await writeAuditLogForRequest(request, {
+      actorUserId: actor.id,
+      action: "student_status_change",
+      targetType: "STUDENT",
+      targetId: studentId,
+      detail: { oldStatus: result.body.oldStatus, newStatus: result.body.newStatus, reason: body.reason }
+    });
+
+    return NextResponse.json(result.body);
+  } catch (error) {
+    console.error("[api/students/[studentId]/status PATCH]", error);
+    return errorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR);
   }
-
-  let body: { newStatus: "ENROLLED" | "LEAVE_OF_ABSENCE" | "WITHDRAWN" | "GRADUATED"; reason: string };
-  try {
-    body = statusChangeSchema.parse(await request.json());
-  } catch {
-    return errorResponse(ERROR_CODES.VALIDATION_INVALID_PAYLOAD);
-  }
-
-  const result = await patchStudentEnrollmentStatus({
-    actor,
-    studentId,
-    newStatus: body.newStatus,
-    reason: body.reason
-  });
-  if (!result.ok) {
-    return errorResponse(result.code);
-  }
-
-  await writeAuditLogForRequest(request, {
-    actorUserId: actor.id,
-    action: "student_status_change",
-    targetType: "STUDENT",
-    targetId: studentId,
-    detail: { oldStatus: result.body.oldStatus, newStatus: result.body.newStatus, reason: body.reason }
-  });
-
-  return NextResponse.json(result.body);
 }

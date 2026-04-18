@@ -19,6 +19,13 @@ export default function AdminManageAccountsPage() {
     pendingId,
     setAppliedSearch,
     rows,
+    page,
+    total,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    goToNextPage,
+    goToPreviousPage,
     dialogs,
     actions,
     actorUserId
@@ -38,6 +45,13 @@ export default function AdminManageAccountsPage() {
       <AccountListTable
         roleFilterLabel={roleFilterLabel}
         rows={rows}
+        page={page}
+        total={total}
+        totalPages={totalPages}
+        hasNextPage={hasNextPage}
+        hasPreviousPage={hasPreviousPage}
+        onNextPage={goToNextPage}
+        onPreviousPage={goToPreviousPage}
         pendingId={pendingId}
         onOpenInfo={(userId) => void actions.openInfo(userId)}
         onUpdateStatus={(userId, status) => void actions.updateStatus(userId, status)}

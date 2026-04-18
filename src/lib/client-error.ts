@@ -16,7 +16,14 @@ type ApiErrorShape = {
   };
 };
 
-const ERROR_CODE_OVERRIDES: Partial<Record<ErrorCode, string>> = {
+const ERROR_CODE_OVERRIDES: Partial<Record<ErrorCode, string>> & Record<
+  "CLIENT_INVALID_JSON" | "CLIENT_EMPTY_RESPONSE",
+  string
+> = {
+  CLIENT_INVALID_JSON:
+    "The server response was not valid JSON (often a 500 HTML page in dev). Check the Next.js terminal or run npm run dev:clean.",
+  CLIENT_EMPTY_RESPONSE:
+    "The server returned an empty body. Check the Next.js terminal or run npm run dev:clean.",
   SERVER_MISCONFIGURED:
     "Server encryption keys are missing or invalid. In `.env`, set PERSON_DATA_KEY_BASE64 to the output of `openssl rand -base64 32` (same for PII_INDEX_KEY_BASE64, or remove it to reuse the data key). Then restart `npm run dev`.",
   AUTH_ACCOUNT_NOT_FOUND: "Invalid login ID or password.",
@@ -27,7 +34,12 @@ const ERROR_CODE_OVERRIDES: Partial<Record<ErrorCode, string>> = {
   AUTH_FORBIDDEN: "You do not have permission to perform this action.",
   AUTH_UNAUTHORIZED: "Authentication is required.",
   ACCOUNT_ALREADY_EXISTS: "This login ID already exists.",
-  ACCOUNT_SELF_ACTION_BLOCKED: "This action cannot be performed on your own account."
+  ACCOUNT_SELF_ACTION_BLOCKED: "This action cannot be performed on your own account.",
+  VALIDATION_SEGMENTATION_INVALID_CHOICE:
+    "Choose a department and pathway from the lists configured under staff segmentation settings (or leave both empty).",
+  CLIENT_FETCH_FAILED: "Could not reach the server. Check your network and try again.",
+  INTERNAL_SERVER_ERROR:
+    "Something went wrong while signing in. Please try again. If it persists, check the Next.js terminal or run npm run dev:clean."
 };
 
 const FIELD_LABELS: Record<string, string> = {

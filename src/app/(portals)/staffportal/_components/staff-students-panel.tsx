@@ -4,11 +4,29 @@ import type { StaffStudentRow } from "@/app/(portals)/staffportal/_types/staff-p
 
 type StaffStudentsPanelProps = {
   rows: StaffStudentRow[];
+  page: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
   onSeeInformation: (row: StaffStudentRow) => void;
   pendingId?: string | null;
 };
 
-export default function StaffStudentsPanel({ rows, onSeeInformation, pendingId }: StaffStudentsPanelProps) {
+export default function StaffStudentsPanel({
+  rows,
+  page,
+  total,
+  totalPages,
+  hasNextPage,
+  hasPreviousPage,
+  onNextPage,
+  onPreviousPage,
+  onSeeInformation,
+  pendingId
+}: StaffStudentsPanelProps) {
   return (
     <section className="table-card stack">
       <span className="eyebrow">Student Information</span>
@@ -45,6 +63,19 @@ export default function StaffStudentsPanel({ rows, onSeeInformation, pendingId }
           ) : null}
         </tbody>
       </table>
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="muted">
+          Page {page} of {totalPages} · {total} students
+        </span>
+        <div className="flex gap-2">
+          <button className="button secondary" type="button" onClick={onPreviousPage} disabled={!hasPreviousPage}>
+            Previous
+          </button>
+          <button className="button secondary" type="button" onClick={onNextPage} disabled={!hasNextPage}>
+            Next
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
