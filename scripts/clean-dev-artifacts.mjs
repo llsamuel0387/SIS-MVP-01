@@ -1,6 +1,6 @@
 /**
  * `clean:dev` — 로컬을 **GitHub에서 이 저장소를 처음 클론한 직후**와 같은 전제로 맞춥니다.
- * **README 1단계(저장소 클론)는 생략**하고, 그 다음에 생기는 것들만 제거합니다(의존성·산출물·`.env`·로컬 Postgres dev DB 등).
+ * **README 1단계(저장소 클론)는 생략**하고, 그 다음에 생기는 것들만 제거합니다(의존성·산출물·`.env`·로컬 Postgres dev/test DB 등).
  */
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
@@ -76,6 +76,7 @@ for (const { name, admin } of dropTargets) {
 
 for (const dir of [
   "node_modules",
+  "node_modules 2",
   ".next",
   ".next-dev",
   ".next-e2e",
@@ -93,17 +94,6 @@ try {
   /* ignore */
 }
 
-for (const base of ["prisma/dev.db", "prisma/test-integration.db", "prisma/ci.sqlite", "dev.db"]) {
-  const p = resolve(repoRoot, base);
-  try {
-    rmSync(p, { force: true });
-    rmSync(`${p}-journal`, { force: true });
-    rmSync(`${p}-wal`, { force: true });
-    rmSync(`${p}-shm`, { force: true });
-  } catch {
-    /* ignore */
-  }
-}
 rmQuiet("prisma/prisma");
 
 console.log("[sis-mvp] Local state aligned with a fresh clone (step 1 clone excluded).");

@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   distDir,
   poweredByHeader: false,
   reactStrictMode: true,
+  turbopack: {
+    root: path.resolve(__dirname)
+  },
   /** Tracing root is for production output; in dev it can contribute to stale/wrong server chunk paths. */
   ...(process.env.NODE_ENV === "production" ? { outputFileTracingRoot: path.resolve(__dirname) } : {}),
   async headers() {

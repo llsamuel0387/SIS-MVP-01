@@ -30,7 +30,8 @@ import {
   applyProfilePatchInTx,
   applySegmentationPatchInTx,
   applyUserControlFieldsInTx,
-  DuplicateEmailOnProfileUpdateError
+  DuplicateEmailOnProfileUpdateError,
+  InvalidProfilePhotoError
 } from "@/lib/admin-accounts/admin-account-user-patch-tx.helpers";
 
 type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -150,6 +151,9 @@ export async function patchAdminAccountUser(
   } catch (e) {
     if (e instanceof DuplicateEmailOnProfileUpdateError) {
       return { ok: false, code: ERROR_CODES.ACCOUNT_ALREADY_EXISTS };
+    }
+    if (e instanceof InvalidProfilePhotoError) {
+      return { ok: false, code: ERROR_CODES.VALIDATION_INVALID_PAYLOAD };
     }
     throw e;
   }

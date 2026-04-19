@@ -36,6 +36,7 @@ export default function InternalTopbar({
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [actorUserId, setActorUserId] = useState<string | null>(null);
   const hasAutoLoggedOut = useRef(false);
+  const logoutRef = useRef<typeof logout | null>(null);
   const FORCE_LOGIN_STORAGE_KEY = "sis_force_login_redirect";
   const LOGOUT_ENDPOINT = "/api/auth/logout";
 
@@ -78,6 +79,8 @@ export default function InternalTopbar({
     }
     window.location.assign(logoutRedirectPath);
   }
+
+  logoutRef.current = logout;
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +125,7 @@ export default function InternalTopbar({
       sessionStorage.setItem(FORCE_LOGIN_STORAGE_KEY, logoutRedirectPath);
 
       // keepalive fetch preserves CSRF header and works during navigation.
-      void logout({ silent: true, redirect: false });
+      void logoutRef.current?.({ silent: true, redirect: false });
 
       window.location.replace(logoutRedirectPath);
     };
@@ -149,42 +152,46 @@ export default function InternalTopbar({
 
   return (
     <>
-    <Card className="topbar-card">
-      <CardContent className="topbar-content">
-        <div className="topbar-head">
-          <Badge variant="outline" className="topbar-title-badge">
-            {title}
-          </Badge>
-          <div className="actions-row">
-            <Button type="button" variant="outline" onClick={() => setChangePasswordOpen(true)}>
-              <KeyRound />
-              Change Password
-            </Button>
-            <Button type="button" variant="outline" onClick={() => void logout()} disabled={pending}>
-              <LogOut />
-              {pending ? "Signing out..." : "Logout"}
-            </Button>
-          </div>
-        </div>
-        <Separator />
-        <p className="topbar-section-label">Navigation</p>
-        <div className="topbar-links topbar-links-vertical">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} className="topbar-link-item">
-              <Button variant={pathname === link.href ? "default" : "secondary"} size="sm" className="topbar-link-button">
-                {link.label}
+      <Card className="topbar-card">
+        <CardContent className="topbar-content">
+          <div className="topbar-head">
+            <Badge variant="outline" className="topbar-title-badge">
+              {title}
+            </Badge>
+            <div className="actions-row">
+              <Button type="button" variant="outline" onClick={() => setChangePasswordOpen(true)}>
+                <KeyRound />
+                Change Password
               </Button>
-            </Link>
-          ))}
-        </div>
-        {error ? <p className="danger">{error}</p> : null}
-      </CardContent>
-    </Card>
-    <ChangePasswordModal
-      open={changePasswordOpen}
-      onClose={() => setChangePasswordOpen(false)}
-      actorUserId={actorUserId}
-    />
+              <Button type="button" variant="outline" onClick={() => void logout()} disabled={pending}>
+                <LogOut />
+                {pending ? "Signing out..." : "Logout"}
+              </Button>
+            </div>
+          </div>
+          <Separator />
+          <p className="topbar-section-label">Navigation</p>
+          <div className="topbar-links topbar-links-vertical">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} className="topbar-link-item">
+                <Button
+                  variant={pathname === link.href ? "default" : "secondary"}
+                  size="sm"
+                  className="topbar-link-button"
+                >
+                  {link.label}
+                </Button>
+              </Link>
+            ))}
+          </div>
+          {error ? <p className="danger">{error}</p> : null}
+        </CardContent>
+      </Card>
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+        actorUserId={actorUserId}
+      />
     </>
   );
 }

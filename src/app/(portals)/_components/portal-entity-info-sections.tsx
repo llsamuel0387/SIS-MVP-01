@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { PortalEntityDetail } from "@/app/(portals)/_types/portal-my-information";
 
 function AddressSection({
@@ -34,7 +35,14 @@ export function PortalEntityIdentitySection({ detail }: { detail: PortalEntityDe
       <div className="identity-layout">
         <div className="identity-photo-wrap">
           {detail.photoDataUrl ? (
-            <img className="profile-photo" src={detail.photoDataUrl} alt={`${detail.name} profile`} />
+            <Image
+              className="profile-photo"
+              src={detail.photoDataUrl}
+              alt={`${detail.name} profile`}
+              width={160}
+              height={160}
+              unoptimized
+            />
           ) : (
             <p className="muted">No profile photo.</p>
           )}

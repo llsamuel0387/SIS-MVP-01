@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { COUNTRY_OPTIONS } from "@/lib/country-options";
 import type { AccountInfo, ProfileInfo } from "@/app/admin/accounts/manage/_components/account-info-sections";
 
+const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 type ProfileEditDraft = {
+  photoPngBase64: string;
+  removePhoto: boolean;
   firstNameKo: string;
   lastNameKo: string;
   firstName: string;
@@ -34,6 +39,8 @@ type AccountProfileEditDialogProps = {
   account: AccountInfo;
   onClose: () => void;
   onSave: (payload: {
+    photoPngBase64?: string;
+    removePhoto?: boolean;
     firstNameKo: string;
     lastNameKo: string;
     firstName: string;
@@ -59,6 +66,8 @@ type AccountProfileEditDialogProps = {
 
 function toDraft(profile: ProfileInfo): ProfileEditDraft {
   return {
+    photoPngBase64: "",
+    removePhoto: false,
     firstNameKo: profile.firstNameKo ?? "",
     lastNameKo: profile.lastNameKo ?? "",
     firstName: profile.firstNameEn ?? "",
@@ -134,10 +143,84 @@ export default function AccountProfileEditDialog({
   onSave
 }: AccountProfileEditDialogProps) {
   const [draft, setDraft] = useState<ProfileEditDraft | null>(account.profile ? toDraft(account.profile) : null);
+  const [photoError, setPhotoError] = useState("");
+  const [photoFileName, setPhotoFileName] = useState("");
+  const [photoPending, setPhotoPending] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const initialDraft = account.profile ? toDraft(account.profile) : null;
+  const hasUnsavedChanges = initialDraft && draft ? JSON.stringify(draft) !== JSON.stringify(initialDraft) : false;
 
   useEffect(() => {
     setDraft(account.profile ? toDraft(account.profile) : null);
+    setPhotoError("");
+    setPhotoFileName("");
+    setPhotoPending(false);
+    setConfirmCloseOpen(false);
   }, [account]);
+
+  function requestClose() {
+    if (pending || photoPending) {
+      return;
+    }
+    if (hasUnsavedChanges) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    onClose();
+  }
+
+  async function readAsBase64(file: File): Promise<string> {
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Failed to read file."));
+      reader.onload = () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        const base64 = result.includes(",") ? result.split(",")[1] ?? "" : "";
+        if (!base64) {
+          reject(new Error("Image data is empty."));
+          return;
+        }
+        resolve(base64);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function onPhotoSelect(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setPhotoError("");
+      setPhotoFileName("");
+      setDraft((prev) => (prev ? { ...prev, photoPngBase64: "", removePhoto: false } : prev));
+      return;
+    }
+    if (file.type && !file.type.startsWith("image/")) {
+      setPhotoError("Only image files can be uploaded.");
+      setPhotoFileName("");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setPhotoError("Image size must be 10MB or less.");
+      setPhotoFileName("");
+      event.target.value = "";
+      return;
+    }
+    setPhotoPending(true);
+    try {
+      const base64 = await readAsBase64(file);
+      setPhotoError("");
+      setPhotoFileName(file.name);
+      setDraft((prev) => (prev ? { ...prev, photoPngBase64: base64, removePhoto: false } : prev));
+    } catch {
+      setPhotoError("Failed to process image file.");
+      setPhotoFileName("");
+      event.target.value = "";
+      setDraft((prev) => (prev ? { ...prev, photoPngBase64: "", removePhoto: false } : prev));
+    } finally {
+      setPhotoPending(false);
+    }
+  }
 
   if (!open || !draft) {
     return null;
@@ -148,12 +231,94 @@ export default function AccountProfileEditDialog({
       <section className="modal-panel stack" role="dialog" aria-modal="true" aria-label="Edit account profile">
         <div className="split-row">
           <span className="eyebrow">Edit Personal Information</span>
-          <button className="button secondary" type="button" onClick={onClose} disabled={pending}>
+          <button className="button secondary" type="button" onClick={requestClose} disabled={pending || photoPending}>
             Close
           </button>
         </div>
 
         {error ? <p className="danger">{error}</p> : null}
+
+        <section className="panel stack">
+          <span className="eyebrow">Profile Photo</span>
+          <p className="muted">
+            Uploading a new image will replace the current photo for this account.
+          </p>
+          {draft.removePhoto ? (
+            <p className="muted">Current photo will be removed when you save.</p>
+          ) : account.photoDataUrl ? (
+            <Image
+              className="profile-photo"
+              src={account.photoDataUrl}
+              alt={`${account.name || account.loginId} current profile`}
+              width={160}
+              height={160}
+              unoptimized
+            />
+          ) : (
+            <p className="muted">No current profile photo.</p>
+          )}
+          <input
+            className="file-input"
+            type="file"
+            accept="image/*,.png,.jpg,.jpeg,.webp,.heic,.heif"
+            onChange={onPhotoSelect}
+            disabled={pending || photoPending}
+          />
+          <div className="inline-actions">
+            {account.photoDataUrl && !draft.photoPngBase64 && !draft.removePhoto ? (
+              <button
+                className="button secondary"
+                type="button"
+                disabled={pending || photoPending}
+                onClick={() => {
+                  setPhotoError("");
+                  setPhotoFileName("");
+                  setDraft({ ...draft, photoPngBase64: "", removePhoto: true });
+                }}
+              >
+                Remove Current Photo
+              </button>
+            ) : null}
+            {draft.photoPngBase64 ? (
+              <button
+                className="button secondary"
+                type="button"
+                disabled={pending || photoPending}
+                onClick={() => {
+                  setPhotoError("");
+                  setPhotoFileName("");
+                  setDraft({ ...draft, photoPngBase64: "", removePhoto: false });
+                }}
+              >
+                Cancel New Photo
+              </button>
+            ) : null}
+            {draft.removePhoto ? (
+              <button
+                className="button secondary"
+                type="button"
+                disabled={pending || photoPending}
+                onClick={() => {
+                  setPhotoError("");
+                  setPhotoFileName("");
+                  setDraft({ ...draft, removePhoto: false });
+                }}
+              >
+                Keep Current Photo
+              </button>
+            ) : null}
+          </div>
+          {photoPending ? (
+            <span className="muted">Processing image...</span>
+          ) : draft.photoPngBase64 ? (
+            <span className="muted">Selected: {photoFileName || "Image uploaded"}</span>
+          ) : draft.removePhoto ? (
+            <span className="muted">Current photo will be deleted.</span>
+          ) : (
+            <span className="muted">Keep current photo</span>
+          )}
+          {photoError ? <span className="danger">{photoError}</span> : null}
+        </section>
 
         <section className="grid cols-2">
           <label className="stack">
@@ -219,11 +384,35 @@ export default function AccountProfileEditDialog({
         ) : null}
 
         <div className="inline-actions">
-          <button className="button" type="button" disabled={pending} onClick={() => void onSave(draft)}>
+          <button className="button" type="button" disabled={pending || photoPending} onClick={() => void onSave(draft)}>
             {pending ? "Saving..." : "Save"}
           </button>
         </div>
       </section>
+
+      {confirmCloseOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="modal-panel stack" role="alertdialog" aria-modal="true" aria-label="Unsaved changes">
+            <span className="eyebrow">Unsaved Changes</span>
+            <p className="muted">Any unsaved changes will be lost if you exit now.</p>
+            <div className="inline-actions align-end">
+              <button className="button secondary" type="button" onClick={() => setConfirmCloseOpen(false)}>
+                Keep Editing
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={() => {
+                  setConfirmCloseOpen(false);
+                  onClose();
+                }}
+              >
+                Exit Without Saving
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

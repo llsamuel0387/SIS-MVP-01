@@ -1,403 +1,426 @@
-# Student Information System — MVP
+# School SIS
 
-학교용 **Student Information System** MVP입니다.  
-Next.js(App Router) + Prisma(PostgreSQL) + 서버 측 권한 검증을 기준으로 합니다.  
-코딩·리뷰·에이전트 작업 시 저장소 규칙은 **[AGENTS.md](./AGENTS.md)** 를 함께 따릅니다.
+학교용 **Student Information System (SIS)** 프로젝트입니다.  
+현재 저장소는 단순 데모 페이지가 아니라, **계정/권한 관리**, **학생·교직원 포털**, **프로필 및 사진 관리**, **정보 변경 요청 승인**, **증명서 발급 기본 흐름**, **감사 로그**, **SSO 설정 기반**까지 포함한 운영형 베이스를 목표로 합니다.
 
-아래 README의 **터미널 명령 예시**는 **macOS**와 **Linux(기본 셸: bash)** 에서 그대로 실행하는 것을 전제로 합니다.
+코드 구조와 보안 규칙은 반드시 [AGENTS.md](./AGENTS.md)도 함께 참고하세요.
 
----
+## 현재 포함된 기능
 
-## 기술 스택 (현재)
+- 관리자
+  - 계정 생성
+  - 계정 관리
+  - 상태 변경, 비밀번호 재설정, 삭제
+  - 학생/교직원 프로필 열람 및 수정
+  - 프로필 사진 추가, 교체, 삭제
+  - 저장하지 않은 변경 이탈 경고
+  - 정보 변경 요청 검토
+  - 로그인 시도 / 감사 로그 확인
+  - SSO 제공자 설정 화면
+- 학생 포털
+  - 본인 정보 조회
+  - 정보 변경 요청
+  - 증명서 요청 기본 흐름
+- 교직원 포털
+  - 배정된 학생 조회
+  - 교직원 목록 조회
+  - 세그멘테이션 설정 기본 흐름
+- 공통
+  - 세션 기반 인증
+  - Argon2id 비밀번호 해시
+  - AES-256-GCM 기반 개인정보 섹션 암호화
+  - CSRF 보호
+  - 감사 로그
+  - PostgreSQL + Prisma 마이그레이션 기반 개발 흐름
 
-| 구분 | 내용 |
+## 기술 스택
+
+| 항목 | 내용 |
 | --- | --- |
-| 프레임워크 | **Next.js 15** (App Router), **React 19** |
-| 언어 | TypeScript (`tsc --noEmit`로 타입 검사) |
-| ORM / DB | **Prisma 6**, **PostgreSQL** (`prisma/schema.prisma`의 `provider = "postgresql"`) |
-| 인증 | 쿠키 `session_token` + DB `Session`, Argon2id 비밀번호 |
-| 스타일 | Tailwind CSS 4 |
-| 테스트 | **Vitest** — 기본 설정(단위 등) + `vitest.integration.config.ts`(Prisma·API 통합), **Playwright**(E2E) |
+| Framework | Next.js 15 App Router |
+| Language | TypeScript strict |
+| DB | PostgreSQL |
+| ORM | Prisma 6 |
+| Auth | Session cookie + DB session |
+| Password | Argon2id |
+| Encryption | AES-256-GCM (`PersonSection`) |
+| Test | Vitest, Playwright |
 
----
+## 먼저 필요한 것
 
-## 선행 조건
+아래가 설치되어 있어야 처음부터 막히지 않습니다.
 
-**처음 실행하기**를 거의 비어 있는 PC에서 그대로 따라가려면, 아래 도구가 **먼저 설치**되어 있어야 합니다. (설치 여부는 터미널에서 각각 `git --version`, `node -v`, `npm -v`, `openssl version` 등으로 확인할 수 있습니다.)
+- `git`
+- `node` 22 계열 권장
+- `npm`
+- `PostgreSQL` 16 이상 권장
+- `openssl`
 
-| 항목 | 설명 |
-| --- | --- |
-| **Git** | **필수.** 1단계 `git clone`에 사용합니다. [Git 공식 다운로드](https://git-scm.com/downloads) 등에서 설치하세요. |
-| **Node.js 22** + **npm** | **필수.** `npm install`, Prisma, Next 개발 서버에 사용합니다. [Node.js 공식](https://nodejs.org/) 또는 `nvm` / Volta 등으로 **메이저 22**에 맞추면 됩니다(저장소 루트 [`.nvmrc`](./.nvmrc)). `npm`은 Node 설치에 포함되는 경우가 대부분입니다. |
-| **PostgreSQL 16+** | **필수.** 로컬 개발/통합 테스트/실서비스 모두 PostgreSQL을 기준으로 합니다. macOS는 `brew install postgresql@16 && brew services start postgresql@16`, Linux는 배포판 패키지 매니저로 PostgreSQL 서버/클라이언트를 설치하세요. |
-| **OpenSSL** | **README 3단계**에서 암호화/JWT 키를 만들 때 사용합니다. macOS·일반적인 Linux에는 포함된 경우가 많습니다. 없으면 배포판 패키지 매니저로 `openssl`(또는 동등 패키지)을 설치하세요. |
-
-`npm run dev`는 **Next.js `engines.node`와 같은 기준**(예: **18.18+**, **19.8+**, **20 이상**)이면 현재 셸의 `node`로 Next를 띄웁니다. 그보다 낮은 버전일 때만 `npx -y node@22`로 격리 실행합니다. **Node 25 등으로 설치한 `node_modules`와 다른 메이저의 Node로 Next만 돌리면** `.next/server` 매니페스트 오류가 날 수 있으니, 이 기준에 맞는 Node로 dev 하는 것이 안전합니다. CI·팀 맞춤은 [`.nvmrc`](./.nvmrc)의 **Node 22** 권장을 그대로 두면 됩니다.
-
----
-
-## 개발 서버와 Next 산출물 (요약)
-
-| 항목 | 설명 |
-| --- | --- |
-| `npm run dev` | 기본 **`next dev --turbo`**(Turbopack) — webpack dev에서 잦던 **`.next/server/*manifest*.json` ENOENT** 를 줄이기 위함입니다. 출력은 **`.next`**. 예전 번들러가 필요하면 **`npm run dev:webpack`** 또는 `SIS_NEXT_DEV_BUNDLER=webpack`. (과거 **`.next-dev`** 는 더 이상 쓰지 않습니다.) |
-| 단일 인스턴스 PID | **`.sis-dev/.dev-server.pid`** — `.next` 삭제와 분리되어 있습니다. |
-| `npm run test:e2e` | Playwright가 **`npm run build`** 뒤 **`next start`**(`127.0.0.1:3100`)로 앱을 띄웁니다. 산출물은 기본 **`.next`** 입니다. **`npm run dev`와 동시에** 돌리지 마세요. `next build`가 켜져 있는 dev의 **`.next`** 를 덮어쓸 수 있습니다. |
-| 파일 폴링 (Docker 볼륨 등) | 기본은 끔. 필요 시 **`SIS_DEV_FILE_POLLING=1 npm run dev`** |
-
----
-
-## 처음 실행하기 (빠른 시작)
-
-> 아래 순서대로 따라하면 로컬에서 바로 로그인 화면을 볼 수 있습니다.
-
-### 1단계 — 저장소 클론
+확인 예시:
 
 ```bash
-git clone <저장소-URL>
-cd <프로젝트-폴더>
+git --version
+node -v
+npm -v
+psql --version
+openssl version
 ```
 
-### 2단계 — 패키지 설치
+`.nvmrc` 기준으로는 **Node 22**를 권장합니다.
+
+## 처음 클론해서 바로 실행하는 방법
+
+### 1. 저장소 받기
+
+```bash
+git clone <REPO_URL>
+cd SIS_Develop
+```
+
+### 2. 패키지 설치
 
 ```bash
 npm install
 ```
 
-`npm run test:e2e` 또는 `npm run test:all` 까지 돌릴 계획이면, **한 번** `npm run playwright:install` 으로 Playwright용 Chromium을 받아 두세요. (`npm install`에는 브라우저 바이너리가 포함되지 않습니다.)
-
-> **GitHub에서 처음 클론한 뒤와 같은 로컬 전제**로 맞추되 **README 1단계(저장소 클론)는 생략**할 때 — 아래 **`npm run clean:dev`** 후 **`npm install`** → **3단계**(`cp .env.example .env` …) 순으로 진행하면 됩니다. (`.env`만 남기려면 `SIS_CLEAN_KEEP_ENV=1 npm run clean:dev`)
-
-### 3단계 — 환경 변수 파일 만들기
+### 3. `.env` 만들기
 
 ```bash
 cp .env.example .env
 ```
 
-1. **`.env`를 연다.**  
-2. **DB 연결 문자열** — 로컬 PostgreSQL에 접속 가능한 URL을 넣는다. 기본 예시는 로컬 5432 포트, 현재 OS 사용자 계정으로 접속하는 개발용 DB다.
+기본 예시는 아래입니다.
 
-   ```bash
-   DATABASE_URL="postgresql://127.0.0.1:5432/sis_mvp_dev?schema=public"
-   ```
+```env
+DATABASE_URL="postgresql://127.0.0.1:5432/sis_mvp_dev?schema=public"
+SECURE_COOKIES=false
+PERSON_DATA_KEY_BASE64="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+PII_INDEX_KEY_BASE64="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+JWT_ACCESS_SECRET="REPLACE_WITH_UNIQUE_RANDOM_SECRET_AT_LEAST_32_CHARS"
+JWT_REFRESH_SECRET="REPLACE_WITH_UNIQUE_RANDOM_SECRET_AT_LEAST_32_CHARS"
+```
 
-3. **암호화 키** — 아래처럼 `openssl rand -base64 32`로 만든 **한 줄짜리 출력**을 그대로 따옴표 안 값으로 넣는다. (`openssl` 출력은 항상 Base64로 디코드 시 **32바이트**라서 앱과 호환된다.)
+다음 값들은 실제 랜덤값으로 바꾸는 것을 권장합니다.
 
-   ```bash
-   openssl rand -base64 32
-   ```
+```bash
+openssl rand -base64 32
+openssl rand -base64 32
+openssl rand -base64 48
+openssl rand -base64 48
+```
 
-   - 첫 번째 출력 → `PERSON_DATA_KEY_BASE64="…여기…"`  
-   - 두 번째 출력(다시 명령 실행) → `PII_INDEX_KEY_BASE64="…여기…"`  
-   - `PII_INDEX_KEY_BASE64` **변수 줄 전체를 삭제**해도 된다. 그러면 앱이 `PERSON_DATA_KEY_BASE64`만 재사용한다. (`PII_INDEX_KEY_BASE64=""` 처럼 **빈 문자열만 두면 안 된다.**)
+각각 다음 변수에 넣으면 됩니다.
 
-   한 번에 두 줄을 만들어 붙여 넣고 싶다면:
+- 첫 번째 32바이트 값: `PERSON_DATA_KEY_BASE64`
+- 두 번째 32바이트 값: `PII_INDEX_KEY_BASE64`
+- 첫 번째 48바이트 값: `JWT_ACCESS_SECRET`
+- 두 번째 48바이트 값: `JWT_REFRESH_SECRET`
 
-   ```bash
-   printf 'PERSON_DATA_KEY_BASE64="%s"\nPII_INDEX_KEY_BASE64="%s"\n' "$(openssl rand -base64 32)" "$(openssl rand -base64 32)"
-   ```
+로컬 HTTP 개발에서는 보통 아래처럼 둡니다.
 
-   `.env.example`에 들어 있는 예시 키를 **그대로 두어도 로컬은 동작**한다. 다만 본인 PC 전용·운영 전에는 위처럼 `openssl`으로 바꾸는 것을 권장한다.
+```env
+SECURE_COOKIES=false
+```
 
-4. **JWT 시크릿** — 아래처럼 `openssl rand -base64 48`로 만든 값을 각각 넣는다. 이제 개발/운영 모두 폴백 없이 필수다.
+## PostgreSQL 셋업
 
-   ```bash
-   printf 'JWT_ACCESS_SECRET="%s"\nJWT_REFRESH_SECRET="%s"\n' "$(openssl rand -base64 48)" "$(openssl rand -base64 48)"
-   ```
+가장 많이 막히는 부분이 여기입니다.
 
-5. **나머지 변수** — 아래 표를 참고해 값을 확인한다.
+이 프로젝트는 SQLite가 아니라 **PostgreSQL 전용**입니다.
 
-| 변수 | 설명 | 예시 |
-| --- | --- | --- |
-| `DATABASE_URL` | 로컬 PostgreSQL 접속 URL | `postgresql://127.0.0.1:5432/sis_mvp_dev?schema=public` |
-| `PERSON_DATA_KEY_BASE64` | 32바이트 암호화 키 (`openssl rand -base64 32` 한 줄) | (명령 출력 붙여넣기) |
-| `PII_INDEX_KEY_BASE64` | 32바이트 HMAC 키 (선택, 줄 삭제 시 데이터 키 재사용) | (또는 명령 출력) |
-| `JWT_ACCESS_SECRET` | **필수**, 32자 이상 | `openssl rand -base64 48` |
-| `JWT_REFRESH_SECRET` | **필수**, 32자 이상 | `openssl rand -base64 48` |
-| `SECURE_COOKIES` | 로컬 개발은 `false`, HTTPS 배포는 `true` | `false` |
+### 가장 쉬운 로컬 전제
 
-> ⚠️ `.env` 파일은 Git에 올라가지 않습니다.  
-> `.env.example`의 `JWT_*` 플레이스홀더는 그대로 두면 앱이 기동하지 않습니다. 암호화/JWT 값은 반드시 실제 랜덤 값으로 바꾸세요.
+- PostgreSQL 서버가 로컬에서 실행 중
+- `127.0.0.1:5432` 접속 가능
+- 현재 OS 사용자명으로 DB 생성/접속 가능
 
-### 4단계 — Prisma 클라이언트 생성
+이 전제가 맞으면 `.env.example` 기본값 그대로도 대부분 동작합니다.
+
+### 만약 기본 접속이 안 되면
+
+`DATABASE_URL`을 본인 환경에 맞게 직접 바꾸세요. 예:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/sis_mvp_dev?schema=public"
+```
+
+또는 개발 스크립트가 쓰는 로컬 기본 DB 경로를 명시적으로 맞출 수도 있습니다.
+
+```bash
+export SIS_POSTGRES_USER=postgres
+export SIS_POSTGRES_PASSWORD=postgres
+export SIS_POSTGRES_HOST=127.0.0.1
+export SIS_POSTGRES_PORT=5432
+```
+
+중요한 점:
+
+- `npm run db:migrate`
+- `npm run db:seed`
+- `npm run dev`
+
+이 흐름은 로컬 개발용 PostgreSQL DB를 기준으로 함께 동작합니다.
+
+## 처음 실행 순서
+
+아래 순서 그대로 진행하면 됩니다.
+
+### 4. Prisma client 생성
 
 ```bash
 npm run db:generate
 ```
 
-### 5단계 — DB 스키마 반영
+### 5. 개발용 DB 생성 + 마이그레이션 적용
 
 ```bash
-npm run db:push
+npm run db:migrate
 ```
 
-> 이 명령은 개발용 PostgreSQL 데이터베이스가 없으면 생성한 뒤 스키마를 반영합니다.
+이 명령은:
 
-### 6단계 — 초기 데이터(시드) 삽입
+- 개발용 PostgreSQL DB가 없으면 생성 시도
+- `prisma/migrations`의 현재 마이그레이션 적용
+
+를 수행합니다.
+
+### 6. 시드 데이터 넣기
 
 ```bash
 npm run db:seed
 ```
 
-> 이 명령을 실행해야 아래 샘플 계정이 생깁니다. **이 단계를 건너뛰면 로그인이 불가능합니다.**
+이 단계를 건너뛰면 로그인용 샘플 계정이 없습니다.
 
-### 7단계 — 개발 서버 시작
+### 7. 개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
-브라우저에서 아래 주소로 접속하세요.
+접속 주소:
 
-| 역할 | 주소 |
-| --- | --- |
-| 관리자 | http://127.0.0.1:3000/admin/login |
-| 학생 | http://127.0.0.1:3000/studentportal/login |
-| 교직원 | http://127.0.0.1:3000/staffportal/login |
+- 관리자: [http://127.0.0.1:3000/admin/login](http://127.0.0.1:3000/admin/login)
+- 학생: [http://127.0.0.1:3000/studentportal/login](http://127.0.0.1:3000/studentportal/login)
+- 교직원: [http://127.0.0.1:3000/staffportal/login](http://127.0.0.1:3000/staffportal/login)
 
----
+## 샘플 계정
 
-## 시드 직후 샘플 계정
+`npm run db:seed` 이후 바로 사용할 수 있습니다.
 
-시드 실행 후 아래 계정으로 로그인할 수 있습니다.  
-**운영·공유 환경에서는 반드시 비밀번호를 변경하세요.**
+| 역할 | loginId | password |
+| --- | --- | --- |
+| Admin | `admin` | `AdminDemo#1` |
+| Student | `studentdemo` | `StudentDemo#1` |
+| Staff | `staffdemo` | `StaffDemo#1` |
 
-| 역할 | 로그인 ID | 초기 비밀번호 | 비고 |
-| --- | --- | --- | --- |
-| 관리자 | `admin` | `AdminDemo#1` | |
-| 학생 | `studentdemo` | `StudentDemo#1` | 학번 `SEED-DEMO-S-001` |
-| 교직원 | `staffdemo` | `StaffDemo#1` | 사번 `SEED-DEMO-T-001`, 시드 학생에게 `StudentAssignment`(유형 `DEMO_SEED`) |
+## 개발 서버 관련 중요 사항
 
-추가 계정은 관리자로 로그인 후 **`/admin/accounts/create`** 또는 API **`POST /api/admin/accounts`** / **`POST /api/users`** 로 만들 수 있습니다.
+이 프로젝트는 개발 중에 Next dev manifest 문제가 반복되어서, 현재는 **기본 dev 서버를 Webpack 경로로 안정성 우선 실행**하도록 맞춰져 있습니다.
 
----
+기본 사용:
 
-## 자주 막히는 이슈
+```bash
+npm run dev
+```
 
-| 증상 | 조치 |
-| --- | --- |
-| 로그인 시 계정 없음 / 401 오류 | `npm run db:seed` 를 실행했는지 확인하세요 |
-| `Port 3000 is already in use` | 다른 프로세스가 3000번 포트를 사용 중입니다. 해당 프로세스를 종료 후 다시 `npm run dev` |
-| `db:wipe-dev` 후 500 오류 | 개발 서버를 **완전히 종료**한 뒤 다시 `npm run dev` |
-| 화면이 맨 위 HTML만 보이거나 버튼·레이아웃이 깨짐 | ① 주소는 **`http://127.0.0.1:3000`** (스크립트가 이 호스트에 묶입니다). ② DevTools → Network에서 **`/_next/static/`** CSS·JS가 **404**인지 확인. ③ **`npm run dev:clean`** 으로 `.next` 등을 지운 뒤 dev 재시작. ④ 터미널에 **Ready / Compiled** 가 보인 뒤에 브라우저에서 첫 요청(자동 새로고침 포함). ⑤ 브라우저 **강력 새로고침**(Cmd+Shift+R) |
-| E2E 테스트 실패 / `Executable doesn't exist` … `playwright` | `npm install`만 하면 브라우저 바이너리는 내려받지 않습니다. **`npm run playwright:install`** (또는 `npx playwright install chromium`) 후 다시 `npm run test:e2e` 또는 `npm run test:all`. ([`playwright.config.ts`](./playwright.config.ts): **`127.0.0.1:3100`**, **`build` + `next start`**, 산출물 **`.next`**) |
-| `.env` 에 키가 없어서 오류 | 3단계로 돌아가 모든 필수 변수를 채워주세요 |
+필요할 때만 Turbopack:
 
----
+```bash
+npm run dev:turbo
+```
 
-## DATABASE_URL과 로컬 PostgreSQL 기본값
+개발 서버가 꼬였을 때는:
 
-- `.env.example` 의 기본값은 **`postgresql://127.0.0.1:5432/sis_mvp_dev?schema=public`** 입니다.
-- `npm run db:push` / `npm run db:seed` / `npm run dev` 는 기본으로 같은 개발용 PostgreSQL DB를 사용합니다.
-- 다른 DB를 쓰려면 **`SIS_DEV_DATABASE_URL`** 환경변수만 설정하면 됩니다.
-- 통합 테스트는 기본으로 **`sis_mvp_integration`** 데이터베이스를 별도로 만들고 매번 drop/create 합니다.
+```bash
+npm run dev:clean
+```
 
----
+이 명령은 `.next` 등 개발 산출물을 지우고 dev 서버를 다시 띄웁니다.
 
-## npm 스크립트 전체 목록
+## 자주 쓰는 명령
 
 | 명령 | 설명 |
 | --- | --- |
-| `npm run dev` | 개발 서버 시작 (`127.0.0.1:3000`, DB 경로 자동 고정). 기본 **`next dev --turbo`**(Turbopack). 서버 준비 후 공통 API 라우트를 자동 사전 컴파일하여 첫 요청 지연을 줄입니다. 산출물 **`.next`** |
-| `npm run dev:webpack` | 위와 동일하나 **webpack** dev (`SIS_NEXT_DEV_BUNDLER=webpack`). Turbopack에서만 재현되는 문제 조사 시 |
-| `npm run dev:clean` | **`.next`**, **`.next-dev`**(레거시), **`.next-e2e`**, **`.sis-dev`** 삭제 후 개발 서버 시작 (캐시·정적 404 의심 시). 서버 기동 직후 **Ready/Compiled** 전에 탭을 열면 일시적 오류가 날 수 있으니 잠시 대기 |
-| `npm run dev:fast` | `next dev` 만 실행 (DB 경로·Turbopack 기본값 없음; 산출물은 역시 **`.next`**) |
-| `npm run preview` | `next build && next start` — 프로덕션 빌드를 로컬에서 바로 실행. HMR 없이 안정적으로 동작을 확인할 때 사용 |
-| `npm run build` | 프로덕션 빌드 |
-| `npm start` | 프로덕션 서버 실행 |
-| `npm run lint` | ESLint 검사 |
-| `npm run db:generate` | Prisma 클라이언트 생성 |
-| `npm run db:push` | 개발용 PostgreSQL DB 생성 보장 후 스키마 반영 |
-| `npm run db:seed` | 초기 데이터 삽입 |
-| `npm run db:wipe-dev` | 개발 DB 초기화 (아래 설명 참고) |
-| `npm run clean:dev` | **처음 클론 후 셋업과 같은 효과**(README **1단계 저장소 클론 제외**) — 아래 **「개발 산출물·로컬 DB 비우기 (`clean:dev`)」** 절 참고 |
-| `npm run db:migrate` | `prisma migrate dev` (마이그레이션 폴더 사용 시) |
-| `npm run db:backfill:person-sections` | 기존 계정 Person/PersonSection 백필 |
-| `npm run db:backfill:pii` | UserProfile 등 PII 암호화 백필 |
-| `npm run test` | 단위 + 통합 테스트 (둘 다 통과해야 성공) |
-| `npm run test:integration` | 통합 테스트만 단독 실행 |
-| `npm run test:watch` | Vitest 워치 모드 |
-| `npm run playwright:install` | Playwright **Chromium** 브라우저 다운로드 (`test:e2e` / `test:all` 전에 최초 1회 권장) |
-| `npm run test:e2e` | Playwright E2E (`127.0.0.1:3100`, `build` + `next start`, 산출물 **`.next`**, [`playwright.config.ts`](./playwright.config.ts)). 매번 `webServer`를 새로 띄웁니다. 이미 올바른 앱이 **3100**에서 돌고 있을 때만 `PW_REUSE_SERVER=1` 로 재사용을 켤 수 있습니다. |
-| `npm run test:all` | `npm run test` + `npm run test:e2e` |
-| `npm run check:mutation-audit` | 변이 API 감사 로그 누락 검사 |
+| `npm run dev` | 기본 개발 서버 실행. 현재는 안정성 우선 경로 |
+| `npm run dev:turbo` | Turbopack으로 개발 서버 실행 |
+| `npm run dev:clean` | `.next`, `.sis-dev` 등을 지우고 dev 재시작 |
+| `npm run build` | production build |
+| `npm run test` | 단위 + 통합 테스트 |
+| `npm run test:e2e` | Playwright E2E |
+| `npm run db:generate` | Prisma client 생성 |
+| `npm run db:migrate` | 개발 DB 생성 보장 + 마이그레이션 적용 |
+| `npm run db:deploy` | 커밋된 마이그레이션만 적용 |
+| `npm run db:seed` | 시드 삽입 |
+| `npm run db:wipe-dev` | 개발 DB 초기화 후 마이그레이션/시드 재적용 |
+| `npm run clean:dev` | 로컬 개발 산출물과 dev/test DB를 거의 초기 상태로 정리 |
+| `npm run check:mutation-audit` | 쓰기 API 감사 로그 누락 검사 |
 
----
+## 추천 개발 루틴
 
-## 개발 산출물·로컬 DB 비우기 (`clean:dev`)
-
-### 목적
-
-**GitHub에서 이 프로젝트를 처음 받아서 셋업하는 사람과 같은 로컬 전제**를 만듭니다. 다만 **README 1단계(저장소 클론)는 이미 이 폴더에서 개발 중이므로 생략**하고, 클론 직후에는 존재하지 않는 것들만 정리합니다.
-
-그 다음은 README **2단계(`npm install`)부터** 그대로 따라가면 됩니다.
-
-**`node_modules`·`.env`·`.env.local`**(선택 제외 가능)과 Next·테스트 산출물을 지우고, **로컬 PostgreSQL의 개발용 DB는 `dropdb`만** 합니다. (`prisma db push`나 시드는 **하지 않습니다** — 클론 직후에도 아직 하지 않은 단계와 같습니다.)
+보통은 아래 순서면 됩니다.
 
 ```bash
-npm run clean:dev
+npm install
+cp .env.example .env
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
 ```
 
-### 전제
+작업 마무리 전에는:
 
-| 항목 | 설명 |
-| --- | --- |
-| **PostgreSQL** | 서버가 떠 있어야 `dropdb`가 동작합니다. |
-| **`dropdb` / `psql`** | PostgreSQL 클라이언트가 PATH에 있어야 합니다. |
-| **3000번 포트** | `npm run dev` 등이 붙잡고 있으면 **즉시 종료**합니다. (`.next`를 지우는 동안 Next가 돌아 있으면 깨질 수 있음 — `db:wipe-dev`와 동일) |
-| **`.env` 유지** | 기본은 **`.env` / `.env.local` 삭제**입니다. 남기려면 **`SIS_CLEAN_KEEP_ENV=1 npm run clean:dev`** |
+```bash
+npm run build
+npm run test
+npm run check:mutation-audit
+```
 
-### 지우는 것
+## DB 관련 정리
 
-- **`.env`**, **`.env.local`** (기본 동작. 위 표 참고)
-- **`node_modules`**, **`.next`**, **`.next-dev`**, **`.next-e2e`**, **`.sis-dev`**, **`coverage`**, **`dist`**, **`playwright-report`**, **`test-results`**, **`tsconfig.tsbuildinfo`**
-- 예전 SQLite 잔여물이 있으면 **`prisma/dev.db`** 등 관련 파일, **`prisma/prisma/`** (있을 때만)
-- PostgreSQL: **`SIS_DEV_DATABASE_URL`**이 가리키는 DB 이름(기본 **`sis_mvp_dev`**)과, **`SIS_TEST_DATABASE_URL`**이 가리키는 DB 이름(기본 **`sis_mvp_integration`**) — 둘이 같으면 한 번만 `dropdb`합니다. (`scripts/postgres-database-url.mjs`와 `src/test/integration-env.ts` 기본값과 맞춤)
+현재 저장소는 PostgreSQL 전환이 반영되어 있습니다.
 
-### 이후 순서 (README와 동일 흐름)
+- Prisma datasource: PostgreSQL
+- 커밋된 마이그레이션 존재
+- 개발/통합 테스트 모두 PostgreSQL 기준
+- `db push`보다 **`db:migrate` / `db:deploy` 중심 흐름**을 권장
 
-1. **`npm install`** (2단계)  
-2. **`cp .env.example .env`** 후 README **3단계**대로 변수·키 채우기 (`SIS_CLEAN_KEEP_ENV=1`로 `.env`를 남겼다면, 바뀐 값만 확인)  
-3. **`npm run db:generate`** → **`npm run db:push`** → **`npm run db:seed`**  
-4. **`npm run dev`**
+`db:push`가 완전히 금지된 것은 아니지만, 처음 셋업과 일반 개발 흐름에서는 `db:migrate`를 기준으로 이해하는 편이 안전합니다.
 
----
+## 초기화/복구 명령
 
-## 개발 DB 초기화 (`db:wipe-dev`)
-
-DB를 완전히 비우고 **스키마 반영·시드까지** 한 번에 다시 깔고 싶을 때 사용합니다. (**`node_modules`가 있어야** 합니다 — Prisma CLI를 `node_modules`에서 실행합니다.)
+### 개발 DB만 완전히 다시 만들고 싶을 때
 
 ```bash
 npm run db:wipe-dev
 ```
 
-**포트 3000에 프로세스가 있으면** 이 명령은 바로 종료합니다. (실행 중인 `npm run dev`가 있으면 `.next` 등을 지우면서 Next가 깨질 수 있기 때문입니다.)
+이 명령은:
 
-이 명령은 다음을 순서대로 실행합니다.
+- 개발용 DB drop/create
+- 마이그레이션 재적용
+- 시드 재삽입
 
-1. 개발용 PostgreSQL DB drop/create
-2. Next·보조 산출물 삭제: **`.next`**, **`.next-dev`**(레거시), **`.next-e2e`**, **`.sis-dev`**
-3. `prisma db push` 로 스키마 재반영
-4. `prisma/seed.ts` 로 초기 데이터 재삽입
+까지 수행합니다.
 
-> ⚠️ 빌드 산출물도 삭제되므로, **실행 전·후에 개발 서버(3000)를 끄고**, 완료 후 다시 **`npm run dev`** 를 실행하세요.
+주의:
 
----
+- 포트 `3000`에서 dev 서버가 돌고 있으면 먼저 끄고 실행하세요.
 
-## PR 전 점검 (권장)
+### 로컬 상태를 거의 새 클론처럼 만들고 싶을 때
 
 ```bash
-npm run build                  # 프로덕션 빌드 통과 여부
-npm run test                   # 단위 + 통합 테스트
-npm run check:mutation-audit   # 감사 로그 누락 여부
-# (선택) CI와 동일하게 통합만 한 번 더: npm run test:integration
+npm run clean:dev
 ```
 
----
+이 명령은:
 
-## 자동 테스트 구조
+- `node_modules`
+- `.next`
+- `.sis-dev`
+- 로컬 dev/test DB
+- 각종 테스트 산출물
 
-- **`npm run test`** — 두 단계 연속 실행:
-  1. Vitest 기본 설정: `authz`, CSRF, 스키마 검증 등 (DB 불필요)
-  2. `vitest.integration.config.ts`: PostgreSQL `sis_mvp_integration` DB drop/create 후 시드 + 픽스처 데이터로 실제 DB 테스트
-- **`npm run test:integration`** — 위 2번만 단독 실행 (통합만 디버깅할 때).
-- **`npm run test:e2e`** — Playwright. [`playwright.config.ts`](./playwright.config.ts)가 **`npm run build && npx next start -p 3100 -H 127.0.0.1`** 로 서버를 띄우며, 기본 산출물 **`.next`** 를 씁니다. 로컬에서 **`npm run dev`를 켠 채** E2E를 돌리면 `next build`가 **`.next`** 를 갱신해 dev가 깨질 수 있으므로 **E2E 전에는 dev를 끄는 것**을 권장합니다. **로컬에서 E2E를 처음 돌리기 전** `npm run playwright:install` (또는 `npx playwright install chromium`) — `npm install`만으로는 브라우저가 설치되지 않습니다. CI는 `chromium --with-deps`.
+등을 정리합니다.
 
----
+정리 후 다시 시작:
 
-## GitHub Actions (CI)
+```bash
+npm install
+cp .env.example .env
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+## 테스트
 
-워크플로는 PostgreSQL 16 service container를 띄우고, 전역 `env`로 PostgreSQL URL과 암호화/JWT 값을 설정합니다.
+### 단위 + 통합
 
-**`verify` 잡 순서 (실제 스텝과 동일):**
+```bash
+npm run test
+```
 
-1. `npm ci`
-2. `npx prisma generate`
-3. `npx prisma db push --accept-data-loss`
-4. `npm run lint`
-5. `npm run check:mutation-audit`
-6. `npx tsc --noEmit`
-7. `npm run test` — Vitest 기본 설정 + `vitest.integration.config.ts` **한 번에** 통과
-8. `npm run test:integration` — 통합 스위트만 **한 번 더** 실행 (CI에서 이중 확인)
-9. `npm run build`
+통합 테스트는 별도 PostgreSQL DB(`sis_mvp_integration`)를 사용합니다.
 
-**`e2e` 잡:** `npm ci` → PostgreSQL client 설치 → `prisma generate` → `prisma db push --accept-data-loss` → `npx playwright install chromium --with-deps` → `npm run test:e2e`
+### E2E
 
----
+처음 한 번:
 
-## 환경 변수 상세
+```bash
+npm run playwright:install
+```
 
-| 변수 | 로컬 개발 | 프로덕션 | 설명 |
-| --- | --- | --- | --- |
-| `DATABASE_URL` | 권장 설정 유지 | 배포 DB URL | `postgresql://127.0.0.1:5432/sis_mvp_dev?schema=public` |
-| `PERSON_DATA_KEY_BASE64` | **필수** (임의 32바이트 base64) | **필수** | PersonSection·프로필 등 암호화 |
-| `PII_INDEX_KEY_BASE64` | 선택 (미설정 시 앱이 `PERSON_DATA_KEY_BASE64` 재사용 가능) | **권장** | 이메일 HMAC 인덱스 |
-| `JWT_ACCESS_SECRET` | **필수**, 32자 이상 | **필수**, 32자 이상 | 미충족 또는 플레이스홀더 유지 시 기동 실패 |
-| `JWT_REFRESH_SECRET` | 위와 동일 | **필수**, 32자 이상 | 위와 동일 |
-| `SECURE_COOKIES` | `false` 권장 (`http://`) | HTTPS면 `true` | 쿠키 `Secure` 플래그 |
-| `SESSION_MAX_AGE_SECONDS` | 선택 | 선택 | 세션 수명(초), 기본 8시간 |
-| `SIS_DEV_DATABASE_URL` | 선택 | — | `npm run dev`만 다른 PostgreSQL DB를 쓸 때 |
-| `SIS_DEV_FILE_POLLING` | 선택 (`1`) | — | `1`이면 `npm run dev`에서 Watchpack/Chokidar 폴링 활성화 (Docker 볼륨 등 파일 이벤트가 안 올 때) |
-| `SIS_NEXT_DEV_BUNDLER` | 선택 (`webpack`) | — | `webpack`이면 Turbopack 대신 webpack dev. Windows는 `set SIS_NEXT_DEV_BUNDLER=webpack` 후 `node scripts/dev-runtime.mjs` 등 |
+그 다음:
 
----
+```bash
+npm run test:e2e
+```
 
-## 더 읽을 곳 (아키텍처·운영)
+## 현재 프로젝트 범위
 
-온보딩·스크립트는 이 README에 두고, **코드 규칙·API 레이어·감사 요구**는 아래를 병행하면 됩니다.
+이 저장소는 이미 쓸 만한 학교용 SIS 기반이지만, 아직 “완전한 학교 ERP 전체”는 아닙니다.
 
-| 문서 / 경로 | 내용 |
-| --- | --- |
-| [AGENTS.md](./AGENTS.md) | 라우트/서비스 구조, Prisma·트랜잭션, 감사·보안 체크리스트 |
-| [`middleware.ts`](./middleware.ts) | `/api` CSRF, 포털 세션 없으면 로그인 리다이렉트 |
-| [`src/lib/api-csrf-policy.ts`](./src/lib/api-csrf-policy.ts) | CSRF 예외 경로 (수정 시 주의) |
+현재 강한 영역:
 
-목록 API의 표시 이름 우선순위(`Person` identity vs `UserProfile`)는 코드의 **`getDisplayNameFromUser`** (`src/lib/user-admin.ts`)를 참고하면 됩니다.
+- 계정/권한 관리
+- 학생/교직원 프로필 관리
+- 사진 관리
+- 정보 변경 승인
+- 감사/보안 기반
 
----
+아직 확장이 필요한 영역:
 
-## 핵심 보안 원칙
+- 수업/과목/학기/시간표
+- 출결
+- 성적/평가
+- 보호자 포털
+- 등록금/수납
+- 더 깊은 결재/행정 워크플로
 
-1. 기본 거부(default deny)
-2. 서버 측 권한 검증 필수
-3. 역할(Role) + 범위(Scope) + 소유권(Ownership) 동시 검증
-4. 감사 로그(audit log) 필수 기록
-5. 민감 정보 최소 노출
+## 문제 해결
 
-### 권한 모델 요약
+### 1. `internal server error`가 개발 중 반복될 때
 
-| 역할 | 접근 범위 |
-| --- | --- |
-| **Student** | 본인 프로필·재학·증명서·공지, 비밀번호 변경 |
-| **Staff** | 배정된 학생만 조회·상태·메모·증명서. 다른 교직원 인사정보 불가 |
-| **Admin** | 계정·프로필·역할/권한, 감사·로그인 시도, 정보 변경 요청, SSO 설정 등 |
+먼저:
 
----
+```bash
+npm run dev:clean
+```
 
-## 개인정보 암호화 저장 구조
+현재는 dev 안정성을 높이기 위해 기본 `npm run dev`가 Webpack 기반 경로를 사용합니다. 그래도 dev 서버가 꼬이면 위 명령으로 대부분 복구됩니다.
 
-- `User`(계정)와 `Person`(개인 단위) 1:1 관계
-- 민감 데이터는 `PersonSection` (`identity.v1`, `student-address.v1`, `photo.v1` 등)에 **AES-256-GCM** 으로 저장
-- 사진: 업로드 후 PNG 재인코딩·크기 제한 적용 (`sharp`)
-- 백필: `npm run db:backfill:person-sections`, `npm run db:backfill:pii`
+### 2. `Port 3000 is already in use`
 
----
+기존 dev 서버가 살아 있는 상태입니다. 그 프로세스를 종료한 뒤 다시 실행하세요.
 
-## 구 경로 리다이렉트
+### 3. 로그인 안 됨
 
-| 구 경로 | 새 경로 | 방식 |
-| --- | --- | --- |
-| `/administrative` | `/admin` | HTTP 308 |
-| `/administrative/login` | `/admin/login` | HTTP 308 |
+아래를 순서대로 확인하세요.
 
----
+```bash
+npm run db:migrate
+npm run db:seed
+```
 
-## 다음 추천 작업
+### 4. PostgreSQL 접속 실패
 
-1. 외부 SSO·운영 IdP와의 완전 연동
-2. PDF 증명서 실제 파이프라인
-3. 통합/E2E 커버리지 확대
-4. PostgreSQL migration 체계(`prisma migrate deploy`)를 운영 릴리스 기준으로 정식화
-5. 운영 시크릿·백업 관리 — `db:wipe-dev` 류 스크립트를 **운영 DB에 절대 연결하지 않기**
+보통은 아래 중 하나입니다.
+
+- PostgreSQL 서버가 안 떠 있음
+- `DATABASE_URL` 사용자/비밀번호 불일치
+- 로컬 계정으로 DB 생성 권한 없음
+
+이 경우 `DATABASE_URL`을 본인 환경에 맞는 명시적 URL로 바꾸는 게 가장 빠릅니다.
+
+## 참고 파일
+
+- [AGENTS.md](./AGENTS.md)
+- [prisma/schema.prisma](./prisma/schema.prisma)
+- [prisma/seed.ts](./prisma/seed.ts)
+- [scripts/dev-runtime.mjs](./scripts/dev-runtime.mjs)
+- [scripts/prisma-migrate-dev.mjs](./scripts/prisma-migrate-dev.mjs)
+- [scripts/wipe-dev-db.mjs](./scripts/wipe-dev-db.mjs)
+- [playwright.config.ts](./playwright.config.ts)

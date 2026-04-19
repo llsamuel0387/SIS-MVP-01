@@ -119,6 +119,8 @@ export async function updateStudentSegmentation(
 }
 
 export type AccountProfileUpdatePayload = {
+  photoPngBase64?: string;
+  removePhoto?: boolean;
   firstNameKo: string;
   lastNameKo: string;
   firstName: string;

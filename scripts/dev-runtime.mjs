@@ -188,7 +188,8 @@ async function main() {
   // Do not delete `.next` while Next is already running. Use `npm run dev:clean` for a cold cache.
   // For Docker bind mounts, set `SIS_DEV_FILE_POLLING=1` to re-enable polling.
 
-  const useWebpack = process.env.SIS_NEXT_DEV_BUNDLER === "webpack";
+  const bundler = process.env.SIS_NEXT_DEV_BUNDLER === "turbo" ? "turbo" : "webpack";
+  const useWebpack = bundler === "webpack";
   const devArgs = [
     "./node_modules/next/dist/bin/next",
     "dev",
@@ -199,11 +200,13 @@ async function main() {
     ...(useWebpack ? [] : ["--turbo"])
   ];
 
-  if (!useWebpack) {
-    console.log("[sis-mvp] Using Turbopack (`next dev --turbo`) for more stable local manifests than webpack dev.");
+  if (useWebpack) {
+    console.log(
+      "[sis-mvp] Using webpack dev by default for stability. Set `SIS_NEXT_DEV_BUNDLER=turbo` only when you explicitly want Turbopack."
+    );
   } else {
     console.warn(
-      "[sis-mvp] Using webpack dev (`SIS_NEXT_DEV_BUNDLER=webpack`). If you see ENOENT on `.next/server/*.json`, omit this env to use Turbopack."
+      "[sis-mvp] Using Turbopack (`SIS_NEXT_DEV_BUNDLER=turbo`). If you see ENOENT on `.next/server/*.json` or `_buildManifest.js.tmp`, switch back to the default webpack dev."
     );
   }
 

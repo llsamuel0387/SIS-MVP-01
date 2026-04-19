@@ -21,6 +21,8 @@ type AccountInfoDialogProps = {
   onUpdateProfile: (
     account: AccountInfo,
     profile: {
+      photoPngBase64?: string;
+      removePhoto?: boolean;
       firstNameKo: string;
       lastNameKo: string;
       firstName: string;

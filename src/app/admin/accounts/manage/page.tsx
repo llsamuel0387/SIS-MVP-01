@@ -33,6 +33,7 @@ export default function AdminManageAccountsPage() {
 
   return (
     <AdminPageShell
+      shellClassName="app-shell-wide"
       heroBadge="Admin / Manage Accounts"
       heroTitle="Manage Accounts"
       heroDescription="Review account state, update status, and reset credentials."
@@ -45,6 +46,7 @@ export default function AdminManageAccountsPage() {
       <AccountListTable
         roleFilterLabel={roleFilterLabel}
         rows={rows}
+        selectedUserId={dialogs.infoTargetId ?? dialogs.passwordTarget?.userId ?? null}
         page={page}
         total={total}
         totalPages={totalPages}

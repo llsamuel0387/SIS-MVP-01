@@ -23,7 +23,7 @@ When in doubt:
 
 * Framework: Next.js 15 App Router
 * Language: TypeScript (strict)
-* ORM: Prisma + SQLite (→ PostgreSQL planned)
+* ORM: Prisma + PostgreSQL
 * Validation: Zod
 * Auth: Session-based (hashed token in DB)
 * Password: Argon2id
@@ -97,8 +97,8 @@ Must contain:
 * **Exception**: encrypted fields (e.g. name, email stored via AES-256-GCM)
   cannot be filtered at the DB level.
   In these cases, in-memory filtering after decryption is acceptable.
-  Long-term solution: maintain a separate plaintext search index column
-  (e.g. `accountSearchText`) — planned for PostgreSQL migration.
+* For searchable encrypted domains, maintain a dedicated plaintext / normalized
+  search index column (e.g. `accountSearchText`) instead of broad in-memory scans.
 
 ---
 

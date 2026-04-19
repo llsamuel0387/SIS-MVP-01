@@ -8,12 +8,24 @@ import { studentSegmentationPatchSchema } from "@/lib/validation";
 import { encryptNullableSensitiveField, toEmailLookupIndex } from "@/lib/pii-field";
 import type { AdminAccountUserDetailRecord } from "@/lib/admin-accounts/admin-account-user.helpers";
 import type { ParsedPatchProfiles } from "@/lib/admin-accounts/admin-account-user.helpers";
+import {
+  buildOptionalPhotoSectionWrite,
+  prepareOptionalProfilePhoto
+} from "@/lib/admin-accounts/create-admin-account.helpers";
 
 export class DuplicateEmailOnProfileUpdateError extends Error {
   override readonly name = "DuplicateEmailOnProfileUpdateError";
 
   constructor() {
     super("duplicate_email");
+  }
+}
+
+export class InvalidProfilePhotoError extends Error {
+  override readonly name = "InvalidProfilePhotoError";
+
+  constructor() {
+    super("invalid_profile_photo");
   }
 }
 
@@ -64,6 +76,11 @@ export async function applyProfilePatchInTx(
   const profileData = parsed.student ?? parsed.staff!;
   const termTimeAddress = parsed.student?.termTimeAddress;
   const homeAddress = parsed.student?.homeAddress;
+  const preparedPhoto = await prepareOptionalProfilePhoto(profileData.photoPngBase64);
+
+  if (preparedPhoto.kind === "invalid") {
+    throw new InvalidProfilePhotoError();
+  }
 
   const duplicateEmail = await tx.userProfile.findFirst({
     where: {
@@ -171,6 +188,17 @@ export async function applyProfilePatchInTx(
       },
       tx
     );
+  }
+
+  if (preparedPhoto.kind === "ready") {
+    await upsertPersonSection(buildOptionalPhotoSectionWrite(personId, preparedPhoto.imagePngBase64), tx);
+  } else if (profileData.removePhoto) {
+    await tx.personSection.deleteMany({
+      where: {
+        personId,
+        sectionKey: "photo.v1"
+      }
+    });
   }
 }
 

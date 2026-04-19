@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "node ./scripts/dev-runtime.mjs",
-    "dev:webpack": "SIS_NEXT_DEV_BUNDLER=webpack node ./scripts/dev-runtime.mjs",
+    "dev:webpack": "node ./scripts/dev-runtime.mjs",
+    "dev:turbo": "SIS_NEXT_DEV_BUNDLER=turbo node ./scripts/dev-runtime.mjs",
     "dev:clean": "node -e \"const fs=require('fs'); for (const d of ['.next','.next-dev','.next-e2e','.sis-dev']) { try { fs.rmSync(d,{recursive:true,force:true}); } catch (e) {} }\" && node ./scripts/dev-runtime.mjs",
     "dev:fast": "next dev",
     "preview": "next build && next start",
@@ -21,7 +22,8 @@
     "test:all": "npm run test && npm run test:e2e",
     "db:generate": "prisma generate",
     "db:push": "node ./scripts/prisma-db-push-dev.mjs",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "node ./scripts/prisma-migrate-dev.mjs",
+    "db:deploy": "prisma migrate deploy",
     "db:seed": "node ./scripts/prisma-tsx-with-dev-db.mjs prisma/seed.ts",
     "db:wipe-dev": "node ./scripts/wipe-dev-db.mjs",
     "clean:dev": "node ./scripts/clean-dev-artifacts.mjs",
@@ -45,9 +47,6 @@
     "tailwindcss": "^4.2.2",
     "world-countries": "^5.1.0",
     "zod": "^4.3.6"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",

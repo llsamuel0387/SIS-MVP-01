@@ -61,7 +61,7 @@ if (!isSafePostgresDatabaseName(prismaDevDatabaseName)) {
 
 run("dropdb", ["--if-exists", "--force", "--maintenance-db", prismaDevAdminDatabaseUrl, prismaDevDatabaseName]);
 run("createdb", ["--maintenance-db", prismaDevAdminDatabaseUrl, prismaDevDatabaseName]);
-run(process.execPath, [prismaCli, "db", "push"]);
+run(process.execPath, [prismaCli, "migrate", "deploy"]);
 run(process.execPath, [tsxCli, "prisma/seed.ts"]);
 
 console.log(`[sis-mvp] Wiped and re-seeded PostgreSQL database: ${prismaDevDatabaseName}`);

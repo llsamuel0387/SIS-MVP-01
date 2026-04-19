@@ -145,6 +145,8 @@ export function useAccountActions(input: UseAccountActionsInput) {
   async function updateProfile(
     account: AccountInfo,
     profile: {
+      photoPngBase64?: string;
+      removePhoto?: boolean;
       firstNameKo: string;
       lastNameKo: string;
       firstName: string;

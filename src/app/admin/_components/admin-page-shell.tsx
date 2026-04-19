@@ -13,6 +13,7 @@ type AdminPageShellProps = {
   heroTitle: string;
   heroDescription: string;
   includeSsoLink?: boolean;
+  shellClassName?: string;
   children: ReactNode;
 };
 
@@ -21,10 +22,11 @@ export default function AdminPageShell({
   heroTitle,
   heroDescription,
   includeSsoLink = false,
+  shellClassName,
   children
 }: AdminPageShellProps) {
   return (
-    <AppShell>
+    <AppShell className={shellClassName}>
       <section className="workspace-layout">
         <aside className="workspace-sidebar">
           <InternalTopbar title={ADMIN_NAV_TITLE} links={includeSsoLink ? [...ADMIN_NAV_LINKS_WITH_SSO] : [...ADMIN_NAV_LINKS]} />

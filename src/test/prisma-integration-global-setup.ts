@@ -42,7 +42,11 @@ export default async function prismaIntegrationGlobalSetup(): Promise<void> {
   Object.assign(process.env, env);
   recreateIntegrationDatabase(INTEGRATION_DATABASE_URL);
 
-  execFileSync(process.execPath, [prismaCli, "db", "push"], { cwd: root, env: { ...env }, stdio: "inherit" });
+  execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
+    cwd: root,
+    env: { ...env },
+    stdio: "inherit"
+  });
   execFileSync(process.execPath, [tsxCli, "prisma/seed.ts"], { cwd: root, env: { ...env }, stdio: "inherit" });
   execFileSync(process.execPath, [tsxCli, "prisma/seed-integration-fixtures.ts"], {
     cwd: root,

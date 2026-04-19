@@ -88,6 +88,10 @@ button {
   gap: 16px;
 }
 
+.app-shell-wide {
+  max-width: 1560px;
+}
+
 .workspace-layout {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -271,6 +275,228 @@ button {
 
 .table tbody tr:hover {
   background: #fafaf7;
+}
+
+.account-grid-card {
+  overflow: hidden;
+}
+
+.account-grid-card-content {
+  padding: 16px;
+}
+
+.account-grid-summary-note {
+  max-width: 420px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.account-grid-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, #f7f7f4 0%, #f1f1ec 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.account-grid-table {
+  min-width: 1220px;
+  table-layout: fixed;
+  background: #fbfbf8;
+}
+
+.account-grid-col-name {
+  width: 23%;
+}
+
+.account-grid-col-login {
+  width: 15%;
+}
+
+.account-grid-col-role {
+  width: 8%;
+}
+
+.account-grid-col-status {
+  width: 10%;
+}
+
+.account-grid-col-control {
+  width: 17%;
+}
+
+.account-grid-col-actions {
+  width: 27%;
+}
+
+.account-grid-table th,
+.account-grid-table td {
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.15;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid rgba(221, 221, 214, 0.82);
+}
+
+.account-grid-table th:last-child,
+.account-grid-table td:last-child {
+  border-right: 0;
+}
+
+.account-grid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, #f7f7f3 0%, #ecece6 100%);
+  color: #5b5b57;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: inset 0 -1px 0 rgba(213, 213, 205, 0.9);
+}
+
+.account-grid-table tbody tr {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.account-grid-table tbody tr:nth-child(even) {
+  background: rgba(248, 248, 245, 0.92);
+}
+
+.account-grid-table tbody tr:hover {
+  background: #f1f4fb;
+}
+
+.account-grid-table tbody tr[data-pending="true"] {
+  background: #eef3ff;
+}
+
+.account-grid-table tbody tr[data-selected="true"] {
+  background: linear-gradient(90deg, rgba(224, 235, 255, 0.96) 0%, rgba(242, 246, 255, 0.96) 100%);
+  box-shadow: inset 3px 0 0 #6f8fe8;
+}
+
+.account-grid-name-cell,
+.account-grid-login-cell {
+  max-width: 0;
+}
+
+.account-grid-name {
+  display: inline-block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.account-grid-login {
+  display: inline-block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "SFMono-Regular", "SF Mono", "JetBrains Mono", Consolas, monospace;
+  font-size: 11.5px;
+  color: #4b4b47;
+}
+
+.account-grid-role-badge,
+.account-grid-status-badge {
+  min-height: 21px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+}
+
+.account-grid-role-badge-student {
+  border-color: #d7e0ff;
+  background: #eff4ff;
+  color: #294574;
+}
+
+.account-grid-role-badge-staff {
+  border-color: #d8eadf;
+  background: #eff8f1;
+  color: #27543a;
+}
+
+.account-grid-role-badge-admin {
+  border-color: #e6ddc6;
+  background: #fbf6e9;
+  color: #6a5121;
+}
+
+.account-grid-status-badge-active {
+  border-color: #d4e7db;
+  background: #edf8f0;
+  color: #25603b;
+}
+
+.account-grid-status-badge-inactive {
+  border-color: #ead6d6;
+  background: #fcf0f0;
+  color: #8f3d3d;
+}
+
+.account-grid-control-cell {
+  min-width: 0;
+}
+
+.account-grid-select {
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  background: #fff;
+}
+
+.account-grid-empty,
+.account-grid-empty-row {
+  color: var(--color-muted-foreground);
+}
+
+.account-grid-empty {
+  font-size: 12px;
+}
+
+.account-grid-actions-cell {
+  min-width: 0;
+}
+
+.account-grid-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 1px;
+}
+
+.account-grid-action-button.ui-button--size-sm {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.account-grid-action-button-danger {
+  color: #8f3d3d;
+  border-color: #ead6d6;
+  background: #fffafa;
+}
+
+.account-grid-pagination {
+  margin-top: 2px;
 }
 
 .suggestion-list,
@@ -623,6 +849,11 @@ button {
 @media (max-width: 1024px) {
   .management-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .account-grid-summary-note {
+    max-width: none;
+    text-align: left;
   }
 
   .grid.cols-3 {

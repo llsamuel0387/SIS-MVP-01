@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { StaffTierCode } from "@/lib/permissions";
 import { getStaffTierLabel } from "@/app/admin/accounts/_config/staff-tier-options";
 import { formatPermissionLabel, sortPermissionCodes } from "@/lib/permission-display";
@@ -72,7 +73,14 @@ export function AccountIdentitySection({ account }: { account: AccountInfo }) {
     <section className="panel stack">
       <span className="eyebrow">Identity</span>
       {account.photoDataUrl ? (
-        <img className="profile-photo" src={account.photoDataUrl} alt={`${account.name || account.loginId} profile`} />
+        <Image
+          className="profile-photo"
+          src={account.photoDataUrl}
+          alt={`${account.name || account.loginId} profile`}
+          width={160}
+          height={160}
+          unoptimized
+        />
       ) : (
         <p className="muted">No profile photo.</p>
       )}

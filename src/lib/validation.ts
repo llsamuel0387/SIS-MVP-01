@@ -73,6 +73,8 @@ const studentAddressSchema = z.object({
 
 const editableIdentityProfileSchema = z
   .object({
+    photoPngBase64: z.preprocess(emptyToUndefined, z.string().min(32).max(20_000_000).optional()),
+    removePhoto: z.boolean().optional(),
     nationality: z.string().min(2).max(64).transform(sanitizeText),
     dateOfBirth: z.string().date(),
     email: z.string().email().max(255).transform((value) => value.trim().toLowerCase())

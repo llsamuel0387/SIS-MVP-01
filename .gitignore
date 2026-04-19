@@ -3,6 +3,7 @@
 .next-e2e
 .sis-dev
 node_modules
+node_modules 2
 .DS_Store
 .env
 .env.local
@@ -11,17 +12,6 @@ coverage
 *.log
 playwright-report
 test-results
-# Misconfigured local DATABASE_URL can create SQLite at repo root; do not commit
-/dev.db
-/dev.db-journal
-prisma/dev.db
-prisma/dev.db-journal
-prisma/test-integration.db
-prisma/test-integration.db-journal
-prisma/ci.sqlite
-prisma/ci.sqlite-journal
-prisma/ci*.sqlite
-prisma/ci*.sqlite-journal
-# 로컬/검증용으로 생긴 중첩 prisma 디렉터리(예: ci-verify.sqlite)
+# 레거시 / 로컬 검증용으로 생긴 중첩 prisma 디렉터리
 prisma/prisma/
 tsconfig.tsbuildinfo
