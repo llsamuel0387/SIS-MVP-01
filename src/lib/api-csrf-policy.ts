@@ -43,7 +43,7 @@ export function shouldEnforceApiCsrf(request: Request): boolean {
   return true;
 }
 
-export function maybeBlockApiForMissingCsrf(request: NextRequest): NextResponse | null {
+export async function maybeBlockApiForMissingCsrf(request: NextRequest): Promise<NextResponse | null> {
   const pathname = request.nextUrl.pathname;
   if (!pathname.startsWith("/api/")) {
     return null;
@@ -55,7 +55,7 @@ export function maybeBlockApiForMissingCsrf(request: NextRequest): NextResponse 
     return null;
   }
   try {
-    assertCsrf(request);
+    await assertCsrf(request);
     return null;
   } catch {
     return errorResponse(ERROR_CODES.AUTH_INVALID_CSRF);

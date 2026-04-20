@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     actorUserId: actor.id,
     action: "password_reset",
     targetType: "USER",
-    targetId: body.targetUserId
+    targetId: result.data.targetLoginId
   });
 
   return NextResponse.json({

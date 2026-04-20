@@ -11,12 +11,23 @@ vi.mock("@/lib/security", () => ({
 import { ForbiddenError } from "@/lib/authz";
 import { guardApiRequest, handleAuthzError } from "@/lib/api-guard";
 
-function requestWithCsrf(url: string, init: RequestInit & { csrfToken?: string } = {}) {
-  const token = init.csrfToken ?? "csrf-test";
+const TEST_JWT_SECRET = "test-csrf-guard-secret-for-unit-tests";
+const TEST_SESSION_TOKEN = "test-session-token-for-guard-tests";
+
+async function requestWithCsrf(url: string, init: RequestInit = {}): Promise<Request> {
+  process.env.JWT_ACCESS_SECRET = TEST_JWT_SECRET;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(TEST_JWT_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("csrf:" + TEST_SESSION_TOKEN));
+  const csrfToken = Buffer.from(sig).toString("hex");
   const headers = new Headers(init.headers);
-  headers.set("x-csrf-token", token);
-  const prevCookie = headers.get("cookie");
-  headers.set("cookie", [prevCookie, `csrf_token=${token}`].filter(Boolean).join("; "));
+  headers.set("x-csrf-token", csrfToken);
+  headers.set("cookie", `session_token=${TEST_SESSION_TOKEN}`);
   return new Request(url, { ...init, headers });
 }
 
@@ -50,7 +61,7 @@ describe("guardApiRequest", () => {
 
   it("returns 403 when role is not allowed", async () => {
     getSessionUserFromRequest.mockResolvedValue(studentUser);
-    const res = await guardApiRequest(requestWithCsrf("https://x/api/admin/audit", { method: "POST" }), {
+    const res = await guardApiRequest(await requestWithCsrf("https://x/api/admin/audit", { method: "POST" }), {
       roles: [ROLES.admin]
     });
     expect("response" in res && res.response?.status).toBe(403);
@@ -58,7 +69,7 @@ describe("guardApiRequest", () => {
 
   it("returns 403 when a required permission is missing", async () => {
     getSessionUserFromRequest.mockResolvedValue(studentUser);
-    const res = await guardApiRequest(requestWithCsrf("https://x/api/users", { method: "POST" }), {
+    const res = await guardApiRequest(await requestWithCsrf("https://x/api/users", { method: "POST" }), {
       permissions: [PERMISSIONS.userCreate]
     });
     expect("response" in res && res.response?.status).toBe(403);
@@ -68,7 +79,7 @@ describe("guardApiRequest", () => {
     getSessionUserFromRequest.mockResolvedValue(studentUser);
     const bad = new Request("https://x/api/information-change-requests", {
       method: "POST",
-      headers: { cookie: "csrf_token=a", "x-csrf-token": "b" }
+      headers: { cookie: "session_token=some-session", "x-csrf-token": "0".repeat(64) }
     });
     const res = await guardApiRequest(bad, { roles: [ROLES.student] });
     expect("response" in res && res.response?.status).toBe(403);
@@ -81,7 +92,7 @@ describe("guardApiRequest", () => {
       permissions: [PERMISSIONS.userCreate, PERMISSIONS.userUpdate]
     };
     getSessionUserFromRequest.mockResolvedValue(admin);
-    const res = await guardApiRequest(requestWithCsrf("https://x/api/users", { method: "POST" }), {
+    const res = await guardApiRequest(await requestWithCsrf("https://x/api/users", { method: "POST" }), {
       permissions: [PERMISSIONS.userCreate]
     });
     expect("user" in res && res.user?.id).toBe("adm");

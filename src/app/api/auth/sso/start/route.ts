@@ -15,6 +15,12 @@ export async function POST(request: Request) {
     AUTH_POLICY.ssoStartRateLimit.perIp.windowMs
   );
   if (!limiter.ok) {
+    await writeAuditLogForRequest(request, {
+      action: "rate_limit_breach",
+      targetType: "SSO_START",
+      targetId: ip,
+      detail: { retryAfterMs: limiter.retryAfterMs }
+    });
     const response = errorResponse(ERROR_CODES.AUTH_RATE_LIMITED);
     response.headers.set("Retry-After", String(Math.ceil(limiter.retryAfterMs / 1000)));
     return response;

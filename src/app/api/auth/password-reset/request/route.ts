@@ -11,6 +11,12 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
   const limiter = await consumeRateLimit(`password-reset:${ip}`, AUTH_POLICY.loginRateLimit.perIp.limit, 60_000);
   if (!limiter.ok) {
+    await writeAuditLogForRequest(request, {
+      action: "rate_limit_breach",
+      targetType: "PASSWORD_RESET_REQUEST",
+      targetId: ip,
+      detail: { retryAfterMs: limiter.retryAfterMs }
+    });
     return errorResponse(ERROR_CODES.AUTH_RATE_LIMITED);
   }
 
@@ -30,7 +36,7 @@ export async function POST(request: Request) {
   await writeAuditLogForRequest(request, {
     action: "password_reset_request",
     targetType: "USER",
-    targetId: userId ?? "anonymous",
+    targetId: loginId,
     detail: { matchedAccount: Boolean(userId) }
   });
 

@@ -20,6 +20,12 @@ export async function POST(request: Request) {
 
     if (!outcome.ok) {
       if (outcome.kind === "rate_limited") {
+        await writeAuditLogForRequest(request, {
+          action: "rate_limit_breach",
+          targetType: "SESSION_REFRESH",
+          targetId: clientIp,
+          detail: { retryAfterMs: outcome.retryAfterMs }
+        });
         const response = errorResponse(refreshSessionErrorCode(outcome));
         response.headers.set("Retry-After", String(Math.ceil(outcome.retryAfterMs / 1000)));
         return response;

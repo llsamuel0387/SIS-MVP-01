@@ -39,7 +39,7 @@ export async function guardApiRequest(request: Request, options?: GuardOptions):
 
   if (shouldEnforceApiCsrf(request)) {
     try {
-      assertCsrf(request);
+      await assertCsrf(request);
     } catch {
       return { response: errorResponse(ERROR_CODES.AUTH_INVALID_CSRF) };
     }

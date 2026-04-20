@@ -37,7 +37,7 @@ async function adminActorSessionToken(): Promise<string> {
   return createSession({ userId: admin.id });
 }
 
-function adminCreateRequest(loginId: string, sessionToken: string) {
+async function adminCreateRequest(loginId: string, sessionToken: string) {
   return integrationApiRequest("/api/admin/accounts", {
     method: "POST",
     sessionToken,
@@ -50,7 +50,7 @@ function adminCreateRequest(loginId: string, sessionToken: string) {
   });
 }
 
-function adminPostJson(sessionToken: string, body: unknown) {
+async function adminPostJson(sessionToken: string, body: unknown) {
   return integrationApiRequest("/api/admin/accounts", {
     method: "POST",
     sessionToken,
@@ -115,12 +115,12 @@ describe("POST /api/admin/accounts — HTTP contract (integration)", () => {
     const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const loginId = `z_http_dup_${suffix}`;
 
-    const first = await postAdminAccounts(adminCreateRequest(loginId, token));
+    const first = await postAdminAccounts(await adminCreateRequest(loginId, token));
     expect(first.status).toBe(201);
     const created = (await first.json()) as { loginId: string; id: string };
     expect(created.loginId).toBe(loginId);
 
-    const second = await postAdminAccounts(adminCreateRequest(loginId, token));
+    const second = await postAdminAccounts(await adminCreateRequest(loginId, token));
     const errBody = await second.json();
     assertAccountAlreadyExistsResponse(second, errBody);
 
@@ -134,12 +134,12 @@ describe("POST /api/admin/accounts — HTTP contract (integration)", () => {
     const secondLogin = `z_norm_api_${suffix}`;
     expect(normalizeLoginId(firstLogin)).toBe(normalizeLoginId(secondLogin));
 
-    const r1 = await postAdminAccounts(adminCreateRequest(firstLogin, token));
+    const r1 = await postAdminAccounts(await adminCreateRequest(firstLogin, token));
     expect(r1.status).toBe(201);
     const created = (await r1.json()) as { loginId: string; id: string };
     expect(created.loginId).toBe(normalizeLoginId(firstLogin));
 
-    const r2 = await postAdminAccounts(adminCreateRequest(secondLogin, token));
+    const r2 = await postAdminAccounts(await adminCreateRequest(secondLogin, token));
     const errBody = await r2.json();
     assertAccountAlreadyExistsResponse(r2, errBody);
 
@@ -154,10 +154,8 @@ describe("POST /api/admin/accounts — HTTP contract (integration)", () => {
     const canonical = normalizeLoginId(rawA);
     expect(normalizeLoginId(rawB)).toBe(canonical);
 
-    const settled = await Promise.allSettled([
-      postAdminAccounts(adminCreateRequest(rawA, token)),
-      postAdminAccounts(adminCreateRequest(rawB, token))
-    ]);
+    const [reqA, reqB] = await Promise.all([adminCreateRequest(rawA, token), adminCreateRequest(rawB, token)]);
+    const settled = await Promise.allSettled([postAdminAccounts(reqA), postAdminAccounts(reqB)]);
 
     const fulfilled = settled.filter((s) => s.status === "fulfilled") as PromiseFulfilledResult<Response>[];
     expect(fulfilled.length, "handlers must not throw").toBe(2);
@@ -181,7 +179,7 @@ describe("POST /api/admin/accounts — HTTP contract (integration)", () => {
     const token = await adminActorSessionToken();
     const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const loginId = `z_stu_np_${suffix}`;
-    const res = await postAdminAccounts(adminPostJson(token, minimalStudentPayload(loginId)));
+    const res = await postAdminAccounts(await adminPostJson(token, minimalStudentPayload(loginId)));
     expect(res.status).toBe(201);
     const created = (await res.json()) as { id: string };
     const user = await prisma.user.findUniqueOrThrow({
@@ -200,7 +198,7 @@ describe("POST /api/admin/accounts — HTTP contract (integration)", () => {
     const token = await adminActorSessionToken();
     const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const loginId = `z_stf_np_${suffix}`;
-    const res = await postAdminAccounts(adminPostJson(token, minimalStaffPayload(loginId)));
+    const res = await postAdminAccounts(await adminPostJson(token, minimalStaffPayload(loginId)));
     expect(res.status).toBe(201);
     const created = (await res.json()) as { id: string };
     const user = await prisma.user.findUniqueOrThrow({
@@ -217,7 +215,7 @@ describe("POST /api/admin/accounts — HTTP contract (integration)", () => {
     const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const loginId = `z_stu_ph_${suffix}`;
     const res = await postAdminAccounts(
-      adminPostJson(token, minimalStudentPayload(loginId, { photoPngBase64: ONE_BY_ONE_PNG_B64 }))
+      await adminPostJson(token, minimalStudentPayload(loginId, { photoPngBase64: ONE_BY_ONE_PNG_B64 }))
     );
     expect(res.status).toBe(201);
     const created = (await res.json()) as { id: string };
@@ -234,7 +232,9 @@ describe("POST /api/admin/accounts — HTTP contract (integration)", () => {
     const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const loginId = `z_stu_badph_${suffix}`;
     const junkB64 = Buffer.from("not a png or jpeg payload x".repeat(20)).toString("base64");
-    const res = await postAdminAccounts(adminPostJson(token, minimalStudentPayload(loginId, { photoPngBase64: junkB64 })));
+    const res = await postAdminAccounts(
+      await adminPostJson(token, minimalStudentPayload(loginId, { photoPngBase64: junkB64 }))
+    );
     expect(res.status).toBe(400);
     const row = await prisma.user.findUnique({ where: { loginId } });
     expect(row).toBeNull();

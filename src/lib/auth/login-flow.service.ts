@@ -1,8 +1,9 @@
 import { recordLoginAttempt } from "@/lib/login-attempts";
 import { verifyPassword } from "@/lib/password";
 import { incrementFailedLoginAndMaybeLock, resetFailedLoginAttempts } from "@/lib/login-lockout";
-import { createSession } from "@/lib/session";
+import { createSession, hashSessionToken } from "@/lib/session";
 import { checkLoginAccountRateLimit, checkLoginIpRateLimit, loadUserForLoginByLoginId } from "@/lib/auth/login-flow.helpers";
+import { prisma } from "@/lib/prisma";
 
 export type LoginFlowSuccess = {
   kind: "success";
@@ -13,6 +14,7 @@ export type LoginFlowSuccess = {
     status: string;
   };
   sessionToken: string;
+  sessionId: string;
 };
 
 export type LoginFlowFailure =
@@ -95,6 +97,11 @@ export async function runLoginFlow(input: {
     userAgent
   });
 
+  const sessionRow = await prisma.session.findFirst({
+    where: { refreshTokenId: hashSessionToken(sessionToken), revokedAt: null },
+    select: { id: true }
+  });
+
   return {
     kind: "success",
     user: {
@@ -103,6 +110,7 @@ export async function runLoginFlow(input: {
       role: user.role.code,
       status: user.status
     },
-    sessionToken
+    sessionToken,
+    sessionId: sessionRow?.id ?? ""
   };
 }

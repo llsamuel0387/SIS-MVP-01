@@ -15,7 +15,7 @@ describe("API handlers (integration DB)", () => {
     await prisma.$disconnect();
   });
   it("GET /api/me returns 401 without session", async () => {
-    const res = await getMe(integrationApiRequest("/api/me"));
+    const res = await getMe(await integrationApiRequest("/api/me"));
     expect(res.status).toBe(401);
   });
 
@@ -25,7 +25,7 @@ describe("API handlers (integration DB)", () => {
       include: { student: true }
     });
     const token = await createSession({ userId: user.id });
-    const res = await getMe(integrationApiRequest("/api/me", { sessionToken: token }));
+    const res = await getMe(await integrationApiRequest("/api/me", { sessionToken: token }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { role: string; studentId?: string };
     expect(body.role).toBe("STUDENT");
@@ -35,14 +35,16 @@ describe("API handlers (integration DB)", () => {
   it("GET /api/students returns 403 for student role (staff-only surface)", async () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { loginId: INTEGRATION_STUDENT_LOGIN_ID } });
     const token = await createSession({ userId: user.id });
-    const res = await getStaffStudents(integrationApiRequest("/api/staff/students", { sessionToken: token }));
+    const res = await getStaffStudents(await integrationApiRequest("/api/staff/students", { sessionToken: token }));
     expect(res.status).toBe(403);
   });
 
   it("GET /api/admin/accounts returns paginated list payload", async () => {
     const admin = await prisma.user.findUniqueOrThrow({ where: { loginId: "admin" } });
     const token = await createSession({ userId: admin.id });
-    const res = await getAdminAccounts(integrationApiRequest("/api/admin/accounts?page=1&pageSize=1", { sessionToken: token }));
+    const res = await getAdminAccounts(
+      await integrationApiRequest("/api/admin/accounts?page=1&pageSize=1", { sessionToken: token })
+    );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       rows: Array<{ id: string; loginId: string; name: string }>;
@@ -65,7 +67,9 @@ describe("API handlers (integration DB)", () => {
   it("GET /api/staff/students returns paginated payload for staff actor", async () => {
     const staff = await prisma.user.findUniqueOrThrow({ where: { loginId: "staffdemo" } });
     const token = await createSession({ userId: staff.id });
-    const res = await getStaffStudents(integrationApiRequest("/api/staff/students?page=1&pageSize=1", { sessionToken: token }));
+    const res = await getStaffStudents(
+      await integrationApiRequest("/api/staff/students?page=1&pageSize=1", { sessionToken: token })
+    );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       rows: Array<{ id: string; name: string; studentNo: string }>;
@@ -83,7 +87,9 @@ describe("API handlers (integration DB)", () => {
   it("GET /api/staff/members returns paginated payload for staff actor", async () => {
     const staff = await prisma.user.findUniqueOrThrow({ where: { loginId: "staffdemo" } });
     const token = await createSession({ userId: staff.id });
-    const res = await getStaffMembers(integrationApiRequest("/api/staff/members?page=1&pageSize=1", { sessionToken: token }));
+    const res = await getStaffMembers(
+      await integrationApiRequest("/api/staff/members?page=1&pageSize=1", { sessionToken: token })
+    );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       rows: Array<{ id: string; name: string; staffNo: string }>;
@@ -106,8 +112,8 @@ describe("API handlers (integration DB)", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        cookie: `session_token=${token}; csrf_token=aaa`,
-        "x-csrf-token": "bbb"
+        cookie: `session_token=${token}`,
+        "x-csrf-token": "0".repeat(64)
       },
       body: JSON.stringify({ requesterNote: "Need to update term-time address." })
     });
@@ -120,7 +126,7 @@ describe("API handlers (integration DB)", () => {
     const token = await createSession({ userId: user.id });
     const before = await prisma.informationChangeRequest.count({ where: { requesterUserId: user.id } });
     const res = await postInformationChangeRequest(
-      integrationApiRequest("/api/information-change-requests", {
+      await integrationApiRequest("/api/information-change-requests", {
         method: "POST",
         sessionToken: token,
         headers: { "Content-Type": "application/json" },
@@ -136,7 +142,7 @@ describe("API handlers (integration DB)", () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { loginId: INTEGRATION_STUDENT_LOGIN_ID } });
     const token = await createSession({ userId: user.id });
     const res = await postPasswordReset(
-      integrationApiRequest("/api/auth/password-reset", {
+      await integrationApiRequest("/api/auth/password-reset", {
         method: "POST",
         sessionToken: token,
         headers: { "Content-Type": "application/json" },
@@ -159,7 +165,7 @@ describe("API handlers (integration DB)", () => {
     const tokenDrop = await createSession({ userId: user.id });
 
     const res = await postPasswordReset(
-      integrationApiRequest("/api/auth/password-reset", {
+      await integrationApiRequest("/api/auth/password-reset", {
         method: "POST",
         sessionToken: tokenKeep,
         headers: { "Content-Type": "application/json" },
@@ -172,14 +178,14 @@ describe("API handlers (integration DB)", () => {
     );
     expect(res.status).toBe(200);
 
-    const still = await getMe(integrationApiRequest("/api/me", { sessionToken: tokenKeep }));
+    const still = await getMe(await integrationApiRequest("/api/me", { sessionToken: tokenKeep }));
     expect(still.status).toBe(200);
 
-    const gone = await getMe(integrationApiRequest("/api/me", { sessionToken: tokenDrop }));
+    const gone = await getMe(await integrationApiRequest("/api/me", { sessionToken: tokenDrop }));
     expect(gone.status).toBe(401);
 
     const restore = await postPasswordReset(
-      integrationApiRequest("/api/auth/password-reset", {
+      await integrationApiRequest("/api/auth/password-reset", {
         method: "POST",
         sessionToken: tokenKeep,
         headers: { "Content-Type": "application/json" },

@@ -57,7 +57,7 @@ export async function refreshSessionForApi(input: RefreshSessionInput): Promise<
     return {
       ok: true,
       nextSessionToken,
-      csrfToken: createCsrfToken(),
+      csrfToken: await createCsrfToken(nextSessionToken),
       sessionExpiresIn: SESSION_POLICY.maxAgeSeconds,
       priorSession,
       nextSession

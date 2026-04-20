@@ -12,27 +12,19 @@ export function isLoginFlowSuccess(flow: LoginFlowResult): flow is LoginFlowSucc
 export async function writeLoginFlowFailureAudits(request: Request, flow: LoginFlowFailure, loginId: string): Promise<void> {
   switch (flow.kind) {
     case "invalid_credentials":
-      if (flow.userId) {
-        await writeAuditLogForRequest(request, {
-          actorUserId: flow.userId,
-          action: "login_failure",
-          targetType: "USER",
-          targetId: flow.userId
-        });
-      } else {
-        await writeAuditLogForRequest(request, {
-          action: "login_failure",
-          targetType: "USER_LOGIN",
-          targetId: loginId
-        });
-      }
+      await writeAuditLogForRequest(request, {
+        actorUserId: flow.userId,
+        action: flow.userId ? "login_failure" : "login_failure_unknown_user",
+        targetType: "USER",
+        targetId: loginId
+      });
       return;
     case "inactive_account":
       await writeAuditLogForRequest(request, {
         actorUserId: flow.userId,
         action: "login_failure",
         targetType: "USER",
-        targetId: flow.userId
+        targetId: loginId
       });
       return;
     case "locked_account":
@@ -40,14 +32,13 @@ export async function writeLoginFlowFailureAudits(request: Request, flow: LoginF
         actorUserId: flow.userId,
         action: "login_failure",
         targetType: "USER",
-        targetId: flow.userId
+        targetId: flow.loginId
       });
       await writeAuditLogForRequest(request, {
         actorUserId: flow.userId,
         action: "account_auto_locked_failed_logins",
         targetType: "USER",
-        targetId: flow.userId,
-        detail: { loginId: flow.loginId }
+        targetId: flow.loginId
       });
       return;
     case "invalid_credentials_warn":
@@ -55,7 +46,7 @@ export async function writeLoginFlowFailureAudits(request: Request, flow: LoginF
         actorUserId: flow.userId,
         action: "login_failure",
         targetType: "USER",
-        targetId: flow.userId
+        targetId: loginId
       });
       return;
     default:
@@ -80,7 +71,7 @@ export function loginFlowFailureToHttpResponse(flow: LoginFlowFailure): NextResp
   return errorResponse(ERROR_CODES.AUTH_INVALID_CREDENTIALS);
 }
 
-export function buildLoginSuccessResponse(flow: LoginFlowSuccess): NextResponse {
+export async function buildLoginSuccessResponse(flow: LoginFlowSuccess): Promise<NextResponse> {
   const response = NextResponse.json({
     ok: true,
     data: {
@@ -93,7 +84,7 @@ export function buildLoginSuccessResponse(flow: LoginFlowSuccess): NextResponse 
       }
     }
   });
-  const csrfToken = createCsrfToken();
+  const csrfToken = await createCsrfToken(flow.sessionToken);
   response.cookies.set(getSessionCookieName(), flow.sessionToken, {
     httpOnly: true,
     secure: process.env.SECURE_COOKIES === "true",
@@ -121,13 +112,19 @@ export async function finalizeLoginPostResponse(
     await writeAuditLogForRequest(request, {
       actorUserId: flow.user.id,
       action: "login",
-      targetType: "USER",
-      targetId: flow.user.id
+      targetType: "SESSION",
+      targetId: flow.sessionId
     });
-    return buildLoginSuccessResponse(flow);
+    return await buildLoginSuccessResponse(flow);
   }
 
   if (flow.kind === "rate_limit_ip" || flow.kind === "rate_limit_account") {
+    await writeAuditLogForRequest(request, {
+      action: "rate_limit_breach",
+      targetType: "AUTH",
+      targetId: loginId,
+      detail: { kind: flow.kind, retryAfterMs: flow.retryAfterMs }
+    });
     return loginFlowFailureToHttpResponse(flow);
   }
 

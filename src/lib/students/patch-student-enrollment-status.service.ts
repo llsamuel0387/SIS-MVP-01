@@ -22,7 +22,8 @@ export async function patchStudentEnrollmentStatus(input: PatchStudentEnrollment
   }
 
   const target = await prisma.student.findUnique({
-    where: { id: input.studentId }
+    where: { id: input.studentId },
+    include: { user: { select: { loginId: true } } }
   });
   if (!target) {
     return { ok: false as const, code: ERROR_CODES.RESOURCE_STUDENT_NOT_FOUND as ErrorCode };
@@ -50,6 +51,7 @@ export async function patchStudentEnrollmentStatus(input: PatchStudentEnrollment
     ok: true as const,
     body: {
       studentId: input.studentId,
+      targetLoginId: target.user.loginId,
       oldStatus,
       newStatus: input.newStatus
     }

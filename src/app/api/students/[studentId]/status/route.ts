@@ -50,7 +50,7 @@ export async function PATCH(request: Request, context: Context) {
       actorUserId: actor.id,
       action: "student_status_change",
       targetType: "STUDENT",
-      targetId: studentId,
+      targetId: result.body.targetLoginId,
       detail: { oldStatus: result.body.oldStatus, newStatus: result.body.newStatus, reason: body.reason }
     });
 

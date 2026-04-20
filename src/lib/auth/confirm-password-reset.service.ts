@@ -13,6 +13,7 @@ export type ConfirmPasswordResetInput = {
 
 export type ConfirmPasswordResetSuccess = {
   userId: string;
+  loginId: string;
 };
 
 export async function confirmPasswordReset(
@@ -20,7 +21,8 @@ export async function confirmPasswordReset(
 ): Promise<{ ok: true; data: ConfirmPasswordResetSuccess } | { ok: false; code: ErrorCode }> {
   const tokenHash = hashPasswordResetToken(input.token);
   const resetToken = await prisma.passwordResetToken.findUnique({
-    where: { tokenHash }
+    where: { tokenHash },
+    include: { user: { select: { loginId: true } } }
   });
   if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= new Date()) {
     return { ok: false, code: ERROR_CODES.AUTH_INVALID_PAYLOAD as ErrorCode };
@@ -40,5 +42,5 @@ export async function confirmPasswordReset(
 
   await invalidateAllUserSessions(resetToken.userId);
 
-  return { ok: true, data: { userId: resetToken.userId } };
+  return { ok: true, data: { userId: resetToken.userId, loginId: resetToken.user.loginId } };
 }

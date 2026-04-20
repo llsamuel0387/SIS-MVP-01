@@ -27,15 +27,45 @@ export function parseCookies(request: Request): Record<string, string> {
   }, {});
 }
 
-export function assertCsrf(request: Request, csrfCookieName = "csrf_token"): void {
-  const csrfHeader = request.headers.get("x-csrf-token");
-  const csrfCookie = parseCookies(request)[csrfCookieName];
+// CSRF tokens are HMAC-SHA256(sessionToken, JWT_ACCESS_SECRET) so a stolen token
+// cannot be replayed against a different session — the server re-derives the expected
+// value from the session cookie rather than comparing header to cookie.
 
-  if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
-    throw new Error("Invalid CSRF token");
-  }
+const SESSION_COOKIE_NAME_FOR_CSRF = "session_token";
+
+async function getCsrfHmacKey(): Promise<CryptoKey> {
+  const secret = process.env.JWT_ACCESS_SECRET;
+  if (!secret) throw new Error("JWT_ACCESS_SECRET is not configured");
+  return crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+    "verify"
+  ]);
 }
 
-export function createCsrfToken(): string {
-  return crypto.randomUUID().replace(/-/g, "");
+export async function createCsrfToken(sessionToken: string): Promise<string> {
+  const key = await getCsrfHmacKey();
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("csrf:" + sessionToken));
+  return Buffer.from(sig).toString("hex");
+}
+
+export async function assertCsrf(request: Request): Promise<void> {
+  const csrfHeader = request.headers.get("x-csrf-token");
+  const sessionToken = parseCookies(request)[SESSION_COOKIE_NAME_FOR_CSRF];
+
+  if (!csrfHeader || !sessionToken) {
+    throw new Error("Invalid CSRF token");
+  }
+
+  // Convert header hex to bytes — Buffer.from returns empty buffer for invalid hex,
+  // so a length check catches malformed values before reaching verify().
+  const headerBytes = Buffer.from(csrfHeader, "hex");
+  if (headerBytes.length !== 32) {
+    throw new Error("Invalid CSRF token");
+  }
+
+  const key = await getCsrfHmacKey();
+  const valid = await crypto.subtle.verify("HMAC", key, headerBytes, new TextEncoder().encode("csrf:" + sessionToken));
+  if (!valid) {
+    throw new Error("Invalid CSRF token");
+  }
 }

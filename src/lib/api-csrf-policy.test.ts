@@ -48,30 +48,57 @@ describe("shouldEnforceApiCsrf", () => {
 });
 
 describe("maybeBlockApiForMissingCsrf", () => {
-  it("returns 403 response when CSRF header and cookie mismatch", () => {
-    const url = "https://example.org/api/me";
-    const request = new NextRequest(url, {
+  const TEST_SECRET = "test-secret-for-csrf-hmac-unit-tests";
+
+  async function computeCsrfToken(sessionToken: string): Promise<string> {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(TEST_SECRET),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("csrf:" + sessionToken));
+    return Buffer.from(sig).toString("hex");
+  }
+
+  it("returns 403 when session cookie is absent", async () => {
+    const request = new NextRequest("https://example.org/api/me", {
       method: "POST",
-      headers: {
-        cookie: "csrf_token=aaa",
-        "x-csrf-token": "bbb"
-      }
+      headers: { "x-csrf-token": "aaa" }
     });
-    const blocked = maybeBlockApiForMissingCsrf(request);
+    const blocked = await maybeBlockApiForMissingCsrf(request);
     expect(blocked).not.toBeNull();
     expect(blocked?.status).toBe(403);
   });
 
-  it("returns null when token matches", () => {
-    const token = "samevalue";
-    const url = "https://example.org/api/me";
-    const request = new NextRequest(url, {
+  it("returns 403 when CSRF header does not match session-derived HMAC", async () => {
+    process.env.JWT_ACCESS_SECRET = TEST_SECRET;
+    const request = new NextRequest("https://example.org/api/me", {
       method: "POST",
       headers: {
-        cookie: `csrf_token=${token}`,
-        "x-csrf-token": token
+        cookie: "session_token=some-session-token",
+        "x-csrf-token": "0".repeat(64)
       }
     });
-    expect(maybeBlockApiForMissingCsrf(request)).toBeNull();
+    const blocked = await maybeBlockApiForMissingCsrf(request);
+    expect(blocked).not.toBeNull();
+    expect(blocked?.status).toBe(403);
+  });
+
+  it("returns null when CSRF header matches session-derived HMAC", async () => {
+    process.env.JWT_ACCESS_SECRET = TEST_SECRET;
+    const sessionToken = "test-session-token";
+    const csrfToken = await computeCsrfToken(sessionToken);
+
+    const request = new NextRequest("https://example.org/api/me", {
+      method: "POST",
+      headers: {
+        cookie: `session_token=${sessionToken}`,
+        "x-csrf-token": csrfToken
+      }
+    });
+    const result = await maybeBlockApiForMissingCsrf(request);
+    expect(result).toBeNull();
   });
 });

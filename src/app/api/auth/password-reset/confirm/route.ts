@@ -15,6 +15,12 @@ export async function POST(request: Request) {
     AUTH_POLICY.passwordResetConfirmRateLimit.perIp.windowMs
   );
   if (!limiter.ok) {
+    await writeAuditLogForRequest(request, {
+      action: "rate_limit_breach",
+      targetType: "PASSWORD_RESET_CONFIRM",
+      targetId: ip,
+      detail: { retryAfterMs: limiter.retryAfterMs }
+    });
     const response = errorResponse(ERROR_CODES.AUTH_RATE_LIMITED);
     response.headers.set("Retry-After", String(Math.ceil(limiter.retryAfterMs / 1000)));
     return response;
@@ -42,7 +48,7 @@ export async function POST(request: Request) {
     actorUserId: result.data.userId,
     action: "password_reset",
     targetType: "USER",
-    targetId: result.data.userId
+    targetId: result.data.loginId
   });
 
   return NextResponse.json({ ok: true });

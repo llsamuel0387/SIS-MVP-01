@@ -16,7 +16,7 @@ export type ResetUserPasswordInput = {
 
 export async function resetUserPassword(
   input: ResetUserPasswordInput
-): Promise<{ ok: true; data: { targetUserId: string } } | { ok: false; code: ErrorCode; fields?: { path: string; message: string }[] }> {
+): Promise<{ ok: true; data: { targetUserId: string; targetLoginId: string } } | { ok: false; code: ErrorCode; fields?: { path: string; message: string }[] }> {
   if (!input.actorHasUserResetPasswordPermission && input.actorUserId !== input.targetUserId) {
     return { ok: false, code: ERROR_CODES.AUTH_FORBIDDEN as ErrorCode };
   }
@@ -62,5 +62,10 @@ export async function resetUserPassword(
     await invalidateAllUserSessions(input.targetUserId);
   }
 
-  return { ok: true, data: { targetUserId: input.targetUserId } };
+  const updatedUser = await prisma.user.findUnique({
+    where: { id: input.targetUserId },
+    select: { loginId: true }
+  });
+
+  return { ok: true, data: { targetUserId: input.targetUserId, targetLoginId: updatedUser?.loginId ?? input.targetUserId } };
 }
