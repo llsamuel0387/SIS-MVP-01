@@ -83,9 +83,8 @@ export async function POST(request: Request) {
       actorUserId: actor.id,
       action: "user_create",
       targetType: "USER",
-      targetId: createdUser.id,
+      targetId: createdUser.loginId,
       detail: {
-        loginId: createdUser.loginId,
         role: createdUser.role.code,
         passwordHashLength: created.passwordHashLength
       }

@@ -95,8 +95,8 @@ export async function POST(request: Request) {
       actorUserId: actor.id,
       action: "user_create",
       targetType: "USER",
-      targetId: createdUser.id,
-      detail: { loginId: createdUser.loginId, role: createdUser.role.code }
+      targetId: createdUser.loginId,
+      detail: { role: createdUser.role.code }
     });
   } catch (auditError) {
     console.error("[audit] user_create failed after successful account commit", auditError);

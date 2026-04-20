@@ -68,7 +68,7 @@ export async function PATCH(request: Request, context: Context) {
     actorUserId: actor.id,
     action: result.data.audit.action,
     targetType: "USER",
-    targetId: userId,
+    targetId: (result.data.audit.detail.loginId as string) ?? userId,
     detail: result.data.audit.detail
   });
 
@@ -94,7 +94,7 @@ export async function DELETE(request: Request, context: Context) {
       actorUserId: actor.id,
       action: result.data.audit.action,
       targetType: "USER",
-      targetId: userId,
+      targetId: (result.data.audit.detail.loginId as string) ?? userId,
       detail: result.data.audit.detail
     });
 

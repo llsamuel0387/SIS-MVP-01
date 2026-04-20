@@ -77,7 +77,7 @@ export async function listAdminAccountsForApi(
         profile: true
       },
       orderBy: { createdAt: "desc" },
-      take: 8
+      take: 10
     });
     return users.map((user) => ({
       id: user.id,
