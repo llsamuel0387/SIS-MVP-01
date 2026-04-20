@@ -28,7 +28,7 @@ When in doubt:
 * Auth: Session-based (hashed token in DB)
 * Password: Argon2id
 * Encryption: AES-256-GCM (PersonSection)
-* Testing: Vitest
+* Testing: Vitest + Playwright
 
 ---
 
@@ -277,6 +277,9 @@ npm run check:mutation-audit
 * Helpers: `verb-noun.helpers.ts`
 * Schemas: `noun.schema.ts`
 
+Use these for new files and renamed files.
+Older files that predate the convention may remain as-is unless you are already touching that area.
+
 ---
 
 ### Prisma
@@ -286,8 +289,24 @@ npm run check:mutation-audit
 
 After schema changes:
 
-* `npx prisma db push`
-* `npx prisma generate`
+* Update `prisma/schema.prisma`
+* Create / update a Prisma migration locally with `npm run db:migrate`
+* Regenerate the client with `npm run db:generate` if needed
+* Use `npm run db:deploy` for deployed environments
+
+Rules:
+
+* `db push` is allowed only for local-only emergency / exploratory workflows
+* Normal repo flow must prefer committed migrations over ad-hoc `db push`
+* Never use dev-only destructive database scripts on production or shared environments
+
+### Dev server
+
+* Default local dev command: `npm run dev`
+* Default local bundler is the repository's stable path (currently webpack via `scripts/dev-runtime.mjs`)
+* Use `npm run dev:turbo` only when explicitly testing Turbopack behavior
+* If the dev server hits `.next` manifest / `ENOENT` instability, use `npm run dev:clean`
+* Do not treat `dev:clean`, `db:wipe-dev`, or `clean:dev` as production deployment commands
 
 ---
 
@@ -295,6 +314,7 @@ After schema changes:
 
 * Never hardcode secrets or config values
 * Add all new variables to `.env.example`
+* If a script depends on a new environment variable, update README setup steps too
 
 ---
 
@@ -308,6 +328,7 @@ This project is still evolving.
 * Small refactors to comply with rules are allowed
 * Note violations with TODO comments (do not block feature work)
 * If a file predates these rules and is NOT being modified, leave it as-is
+* Keep AGENTS.md and README aligned with actual repository behavior when workflows materially change
 
 ---
 
