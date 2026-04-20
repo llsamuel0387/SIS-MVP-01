@@ -28,7 +28,8 @@
     "db:wipe-dev": "node ./scripts/wipe-dev-db.mjs",
     "clean:dev": "node ./scripts/clean-dev-artifacts.mjs",
     "db:backfill:person-sections": "node ./scripts/prisma-tsx-with-dev-db.mjs prisma/backfill-person-sections.ts",
-    "db:backfill:pii": "node ./scripts/prisma-tsx-with-dev-db.mjs prisma/backfill-pii-encryption.ts"
+    "db:backfill:pii": "node ./scripts/prisma-tsx-with-dev-db.mjs prisma/backfill-pii-encryption.ts",
+    "db:reencrypt-pii": "node ./scripts/prisma-tsx-with-dev-db.mjs prisma/reencrypt-pii.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
